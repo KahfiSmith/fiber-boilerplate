@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -13,6 +14,7 @@ type Config struct {
 	Fiber FiberConfig
 	Log   LogConfig
 	DB    DBConfig
+	Redis RedisConfig
 }
 
 type AppConfig struct {
@@ -33,19 +35,6 @@ type FiberConfig struct {
 type LogConfig struct {
 	Level    string
 	Encoding string
-}
-
-type DBConfig struct {
-	Host            string
-	Port            int
-	User            string
-	Password        string
-	Name            string
-	SSLMode         string
-	TimeZone        string
-	MaxOpenConns    int
-	MaxIdleConns    int
-	ConnMaxLifetime time.Duration
 }
 
 func Load() (Config, error) {
@@ -80,18 +69,22 @@ func Load() (Config, error) {
 			Level:    v.GetString("LOG_LEVEL"),
 			Encoding: v.GetString("LOG_ENCODING"),
 		},
-		DB: DBConfig{
-			Host:            v.GetString("DB_HOST"),
-			Port:            v.GetInt("DB_PORT"),
-			User:            v.GetString("DB_USER"),
-			Password:        v.GetString("DB_PASSWORD"),
-			Name:            v.GetString("DB_NAME"),
-			SSLMode:         v.GetString("DB_SSLMODE"),
-			TimeZone:        v.GetString("DB_TIMEZONE"),
-			MaxOpenConns:    v.GetInt("DB_MAX_OPEN_CONNS"),
-			MaxIdleConns:    v.GetInt("DB_MAX_IDLE_CONNS"),
-			ConnMaxLifetime: v.GetDuration("DB_CONN_MAX_LIFETIME"),
-		},
+	}
+
+	dbCfg, err := loadDBConfig(v)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.DB = dbCfg
+
+	redisCfg, err := loadRedisConfig(v)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.Redis = redisCfg
+
+	if err := cfg.Validate(); err != nil {
+		return Config{}, err
 	}
 
 	return cfg, nil
@@ -110,15 +103,45 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("LOG_LEVEL", "info")
 	v.SetDefault("LOG_ENCODING", "console")
+	setDBDefaults(v)
+	setRedisDefaults(v)
+}
 
-	v.SetDefault("DB_HOST", "127.0.0.1")
-	v.SetDefault("DB_PORT", 5432)
-	v.SetDefault("DB_USER", "postgres")
-	v.SetDefault("DB_PASSWORD", "postgres")
-	v.SetDefault("DB_NAME", "fiber_boilerplate")
-	v.SetDefault("DB_SSLMODE", "disable")
-	v.SetDefault("DB_TIMEZONE", "UTC")
-	v.SetDefault("DB_MAX_OPEN_CONNS", 25)
-	v.SetDefault("DB_MAX_IDLE_CONNS", 25)
-	v.SetDefault("DB_CONN_MAX_LIFETIME", "5m")
+func (c AppConfig) Address() string {
+	return fmt.Sprintf("%s:%s", c.Host, c.Port)
+}
+
+func (c Config) Validate() error {
+	if err := requireNonEmpty("APP_NAME", c.App.Name); err != nil {
+		return err
+	}
+	if err := requireNonEmpty("APP_HOST", c.App.Host); err != nil {
+		return err
+	}
+	if err := requireNonEmpty("APP_PORT", c.App.Port); err != nil {
+		return err
+	}
+	if err := requirePositiveDuration("APP_SHUTDOWN_TIMEOUT", c.App.ShutdownTimeout); err != nil {
+		return err
+	}
+
+	if err := requirePositiveDuration("APP_READ_TIMEOUT", c.Fiber.ReadTimeout); err != nil {
+		return err
+	}
+	if err := requirePositiveDuration("APP_WRITE_TIMEOUT", c.Fiber.WriteTimeout); err != nil {
+		return err
+	}
+	if err := requirePositiveInt("APP_BODY_LIMIT_MB", c.Fiber.BodyLimitMB); err != nil {
+		return err
+	}
+
+	encoding := strings.ToLower(strings.TrimSpace(c.Log.Encoding))
+	if encoding != "json" && encoding != "console" {
+		return fmt.Errorf("LOG_ENCODING must be one of: json, console")
+	}
+	if err := validateDBConfig(c.DB); err != nil {
+		return err
+	}
+
+	return validateRedisConfig(c.Redis)
 }
