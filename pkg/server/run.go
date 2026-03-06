@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 
 	config "fiber-boilerplate/pkg/configs"
 
@@ -24,11 +23,9 @@ func Run(ctx context.Context, app *fiber.App, cfg config.Config, log *zap.Logger
 	}()
 
 	go func() {
-		addr := fmt.Sprintf("%s:%s", cfg.App.Host, cfg.App.Port)
+		addr := cfg.App.Address()
 		log.Info("starting server", zap.String("address", addr))
-		errCh <- app.Listen(addr, fiber.ListenConfig{
-			EnablePrefork: cfg.Fiber.Prefork,
-		})
+		errCh <- app.Listen(addr, config.NewFiberListenConfig(cfg))
 	}()
 
 	return <-errCh
