@@ -1,0 +1,48 @@
+# Database
+
+Database setup and conventions.
+
+## Current Driver
+- `gorm` with PostgreSQL driver (`gorm.io/driver/postgres`)
+- Bootstrap location: `pkg/configs/gorm.go`
+
+## Configuration Source
+- Loaded by `viper` in `pkg/configs/config.go` + `pkg/configs/db.go`
+- Environment defaults are in `.env.example`
+
+## DB Environment Keys
+- `DATABASE_URL` (optional; when set, it overrides host/user/password/name/sslmode/timezone from `DB_*`)
+- `DB_HOST`
+- `DB_PORT`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+- `DB_SSLMODE`
+- `DB_TIMEZONE`
+- `DB_MAX_OPEN_CONNS`
+- `DB_MAX_IDLE_CONNS`
+- `DB_CONN_MAX_LIFETIME`
+- `DB_CONN_MAX_IDLE_TIME`
+
+## Connection Behavior
+- DSN built by `DBConfig.DSN()`
+- If `DATABASE_URL` is present, it is parsed first and mapped to DB config fields.
+- Pool configuration:
+  - `SetMaxOpenConns`
+  - `SetMaxIdleConns`
+  - `SetConnMaxLifetime`
+  - `SetConnMaxIdleTime`
+- Startup health check: `sqlDB.Ping()`
+
+## Validation Rules
+Startup fails fast if required DB config is invalid:
+- empty host/user/db name
+- non-positive port or pool values
+- non-positive lifetime/idle durations
+
+## Future DB Workflow
+When adding new DB features:
+1. Define/adjust env key + default in `pkg/configs/db.go`.
+2. Add validation rule in `validateDBConfig`.
+3. Wire runtime usage in `pkg/configs/gorm.go` or repository layer.
+4. Update `.env.example` and docs.
