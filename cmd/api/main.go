@@ -1,3 +1,11 @@
+// @title Fiber Boilerplate API
+// @version 1.0
+// @description HTTP API for the Fiber boilerplate authentication and health endpoints.
+// @BasePath /api/v1
+// @schemes http https
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 package main
 
 import (
