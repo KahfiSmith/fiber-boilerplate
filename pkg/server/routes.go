@@ -9,5 +9,6 @@ import (
 func RegisterRoutes(app *fiber.App, deps Dependencies) {
 	serverRoutes.Register(app, serverRoutes.Dependencies{
 		HealthController: deps.HealthController,
+		AuthController:   deps.AuthController,
 	})
 }
