@@ -18,6 +18,7 @@ Standard workflow Codex should follow in this repo.
   - wiring in `pkg/server`
   - request/response contracts in `pkg/dto`
   - domain objects in `pkg/entities`
+  - reusable model/entity translation in `pkg/mappers`
   - business logic in `pkg/services`
   - data access in `pkg/repositories`
 

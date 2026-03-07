@@ -19,15 +19,19 @@ Current backend architecture and dependency direction.
 - `pkg/dto/request`
   - HTTP request contracts
 - `pkg/dto/response`
-  - HTTP response contracts
+  - HTTP response contracts, including the shared API envelope
 - `pkg/entities`
   - domain/business objects
+- `pkg/mappers`
+  - transformations between `models` and `entities`
 - `pkg/services`
   - business logic
+  - should operate on `entities`, not persistence models
 - `pkg/repositories`
   - data source abstraction
+  - responsible for translating `entities <-> models` and persisting `models`
 - `pkg/models`
-  - legacy/shared models (keep minimal; prefer `entities` + `dto` for new modules)
+  - persistence-only models (GORM/database-facing structs)
 - `pkg/utils`
   - shared helper functions (response formatting)
 
@@ -35,9 +39,10 @@ Current backend architecture and dependency direction.
 - `cmd` may depend on all `pkg/*`.
 - `server` should focus on HTTP wiring and receive controllers via injected dependencies.
 - `controllers` depend on services, utils, and DTOs.
+- `controllers` translate `request DTO -> entity` before service calls and `entity -> response DTO` before returning.
 - `server/middleware` depends on HTTP/framework concerns only.
-- `services` depend on repositories and entities.
-- `repositories` should not depend on controller/server.
+- `services` depend on repositories and entities; they should not return persistence models.
+- `repositories` should not depend on controller/server and should translate `models <-> entities` through `pkg/mappers`.
 - `dto` should not contain business logic.
 - `configs` should not depend on business/domain code.
 
@@ -50,7 +55,7 @@ Current backend architecture and dependency direction.
 - All library bootstrap stays in `pkg/configs`:
   - `config.go`
   - `db.go`
-  - `redis.go`
+  - `auth.go`
   - `fiber.go`
   - `gorm.go`
   - `zap.go`

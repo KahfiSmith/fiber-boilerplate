@@ -34,6 +34,7 @@ Coding conventions for this repository.
 - Put HTTP request contracts in `pkg/dto/request`.
 - Put HTTP response contracts in `pkg/dto/response`.
 - Put domain objects in `pkg/entities`.
+- Put reusable model/entity conversion logic in `pkg/mappers`.
 - Put business logic in `pkg/services`.
 - Put data access contracts/implementations in `pkg/repositories`.
 
@@ -43,7 +44,7 @@ Coding conventions for this repository.
 - Keep DB-related config logic in `pkg/configs/db.go`.
 
 ## API and Responses
-- Keep response envelope consistent with shared response type (currently `models.APIResponse`).
+- Keep response envelope consistent with the shared response DTO (`dto/response.APIResponse`).
 - Prefer new API contracts under `pkg/dto/request` and `pkg/dto/response`.
 - Prefer utility response helpers in `pkg/utils/response.go`.
 - Preserve backward compatibility unless requested.
