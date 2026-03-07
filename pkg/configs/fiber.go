@@ -8,7 +8,6 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 func NewFiberApp(cfg Config) *fiber.App {
@@ -26,9 +25,9 @@ func NewFiberListenConfig(cfg Config) fiber.ListenConfig {
 	}
 }
 
-func ApplyFiberMiddlewares(app *fiber.App, log *zap.Logger, db *gorm.DB, validate *validator.Validate) {
+func ApplyFiberMiddlewares(app *fiber.App, log *zap.Logger, validate *validator.Validate) {
 	app.Use(requestid.New())
 	app.Use(recovermw.New())
-	app.Use(serverMiddleware.InjectRequestContext(db, validate))
+	app.Use(serverMiddleware.InjectRequestContext(validate))
 	app.Use(serverMiddleware.RequestLogger(log))
 }

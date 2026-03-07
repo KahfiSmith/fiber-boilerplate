@@ -3,6 +3,9 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,7 +17,7 @@ type Config struct {
 	Fiber FiberConfig
 	Log   LogConfig
 	DB    DBConfig
-	Redis RedisConfig
+	Auth  AuthConfig
 }
 
 type AppConfig struct {
@@ -46,7 +49,7 @@ func Load() (Config, error) {
 
 	if err := v.ReadInConfig(); err != nil {
 		var cfgNotFound viper.ConfigFileNotFoundError
-		if !errors.As(err, &cfgNotFound) {
+		if !errors.As(err, &cfgNotFound) && !errors.Is(err, os.ErrNotExist) {
 			return Config{}, fmt.Errorf("read config file: %w", err)
 		}
 	}
@@ -77,11 +80,15 @@ func Load() (Config, error) {
 	}
 	cfg.DB = dbCfg
 
-	redisCfg, err := loadRedisConfig(v)
+	authCfg, err := loadAuthConfig(v)
 	if err != nil {
 		return Config{}, err
 	}
-	cfg.Redis = redisCfg
+	cfg.Auth = authCfg
+
+	if err := applyLegacyAppEnvOverrides(v, &cfg); err != nil {
+		return Config{}, err
+	}
 
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
@@ -104,7 +111,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("LOG_LEVEL", "info")
 	v.SetDefault("LOG_ENCODING", "console")
 	setDBDefaults(v)
-	setRedisDefaults(v)
+	setAuthDefaults(v)
 }
 
 func (c AppConfig) Address() string {
@@ -143,5 +150,66 @@ func (c Config) Validate() error {
 		return err
 	}
 
-	return validateRedisConfig(c.Redis)
+	return validateAuthConfig(c.Auth)
+}
+
+func applyLegacyAppEnvOverrides(v *viper.Viper, cfg *Config) error {
+	httpAddr := strings.TrimSpace(v.GetString("HTTP_ADDR"))
+	if httpAddr != "" {
+		host, port, err := parseHTTPAddr(httpAddr)
+		if err != nil {
+			return fmt.Errorf("invalid HTTP_ADDR: %w", err)
+		}
+		if host != "" {
+			cfg.App.Host = host
+		}
+		cfg.App.Port = port
+	}
+
+	gracefulShutdownMS := v.GetInt("GRACEFUL_SHUTDOWN_MS")
+	if gracefulShutdownMS > 0 {
+		cfg.App.ShutdownTimeout = time.Duration(gracefulShutdownMS) * time.Millisecond
+	}
+
+	return nil
+}
+
+func parseHTTPAddr(value string) (string, string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", "", errors.New("must not be empty")
+	}
+
+	if strings.HasPrefix(value, ":") {
+		port := strings.TrimPrefix(value, ":")
+		if err := validatePort(port); err != nil {
+			return "", "", err
+		}
+		return "", port, nil
+	}
+
+	host, port, err := net.SplitHostPort(value)
+	if err != nil {
+		return "", "", fmt.Errorf("must be in host:port or :port format")
+	}
+	if strings.TrimSpace(host) == "" {
+		return "", "", errors.New("host must not be empty")
+	}
+	if err := validatePort(port); err != nil {
+		return "", "", err
+	}
+
+	return strings.TrimSpace(host), port, nil
+}
+
+func validatePort(value string) error {
+	portInt, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil {
+		return errors.New("port must be numeric")
+	}
+	if portInt < 1 || portInt > 65535 {
+		return errors.New("port must be between 1 and 65535")
+	}
+
+	return nil
 }
