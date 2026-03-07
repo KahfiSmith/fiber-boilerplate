@@ -1,0 +1,797 @@
+basePath: /api/v1
+definitions:
+  request.ForgotPasswordRequest:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+    required:
+    - email
+    type: object
+  request.LoginRequest:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      password:
+        maxLength: 128
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  request.LogoutRequest:
+    properties:
+      refresh_token:
+        maxLength: 512
+        minLength: 32
+        type: string
+    required:
+    - refresh_token
+    type: object
+  request.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        maxLength: 512
+        minLength: 32
+        type: string
+    required:
+    - refresh_token
+    type: object
+  request.RegisterRequest:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      name:
+        maxLength: 120
+        minLength: 2
+        type: string
+      password:
+        maxLength: 128
+        minLength: 8
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  request.ResetPasswordRequest:
+    properties:
+      challenge_id:
+        maxLength: 256
+        minLength: 8
+        type: string
+      new_password:
+        maxLength: 128
+        minLength: 8
+        type: string
+      otp:
+        type: string
+    required:
+    - challenge_id
+    - new_password
+    - otp
+    type: object
+  request.RevokeSessionRequest:
+    properties:
+      session_id:
+        maxLength: 256
+        minLength: 8
+        type: string
+    required:
+    - session_id
+    type: object
+  request.VerifyOTPRequest:
+    properties:
+      challenge_id:
+        maxLength: 256
+        minLength: 8
+        type: string
+      otp:
+        type: string
+    required:
+    - challenge_id
+    - otp
+    type: object
+  response.APIResponse:
+    properties:
+      data: {}
+      error: {}
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  response.AuthSessionResponse:
+    properties:
+      created_at:
+        type: string
+      current:
+        type: boolean
+      expires_at:
+        type: string
+      ip_address:
+        type: string
+      session_id:
+        type: string
+      user_agent:
+        type: string
+    type: object
+  response.AuthTokenResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in_sec:
+        type: integer
+      refresh_token:
+        type: string
+      session_id:
+        type: string
+      token_type:
+        type: string
+      user:
+        $ref: '#/definitions/response.AuthUserResponse'
+    type: object
+  response.AuthUserResponse:
+    properties:
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  response.HealthStatusResponse:
+    properties:
+      message:
+        type: string
+      service:
+        type: string
+      status:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  response.OTPChallengeResponse:
+    properties:
+      challenge_id:
+        type: string
+      expires_in_sec:
+        type: integer
+      otp:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: HTTP API for the Fiber boilerplate authentication and health endpoints.
+  title: Fiber Boilerplate API
+  version: "1.0"
+paths:
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Generates an OTP challenge for password reset.
+      parameters:
+      - description: Forgot password request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/request.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.OTPChallengeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Start forgot-password flow
+      tags:
+      - Auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Validates credentials and returns an OTP challenge.
+      parameters:
+      - description: Login request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/request.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.OTPChallengeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Login with email and password
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Revokes a refresh token and logs the current client out.
+      parameters:
+      - description: Logout request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/request.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Logout a session
+      tags:
+      - Auth
+  /auth/me:
+    get:
+      description: Returns the profile of the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.AuthUserResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - Auth
+  /auth/otp/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verifies an OTP challenge and returns access and refresh tokens.
+      parameters:
+      - description: Verify OTP request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/request.VerifyOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.AuthTokenResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Verify OTP challenge
+      tags:
+      - Auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Exchanges a refresh token for a new access token pair.
+      parameters:
+      - description: Refresh token request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/request.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.AuthTokenResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Refresh access token
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a user account and returns access and refresh tokens.
+      parameters:
+      - description: Register request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/request.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.AuthTokenResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "409":
+          description: Conflict
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Register a new user
+      tags:
+      - Auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Resets a user's password after OTP verification.
+      parameters:
+      - description: Reset password request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/request.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "429":
+          description: Too Many Requests
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      summary: Reset password with OTP
+      tags:
+      - Auth
+  /auth/sessions:
+    get:
+      description: Returns all sessions for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/response.AuthSessionResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List active sessions
+      tags:
+      - Auth
+  /auth/sessions/revoke:
+    post:
+      consumes:
+      - application/json
+      description: Revokes one session belonging to the authenticated user.
+      parameters:
+      - description: Revoke session request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/request.RevokeSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Revoke a session
+      tags:
+      - Auth
+  /auth/sessions/revoke-all:
+    post:
+      description: Revokes all sessions for the authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  additionalProperties: true
+                  type: object
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                error:
+                  type: string
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Revoke all sessions
+      tags:
+      - Auth
+  /health:
+    get:
+      description: Returns service health information.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/response.HealthStatusResponse'
+              type: object
+      summary: Health check
+      tags:
+      - Health
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

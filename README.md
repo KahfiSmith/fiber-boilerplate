@@ -83,6 +83,8 @@ Requirements:
 - `psql` must be installed.
 - `.env` or environment must point to the target PostgreSQL database.
 - Migration scripts only execute SQL files from `db/migrations`.
+- `swag` must also be installed unless `GENERATE_SWAGGER_ON_MIGRATE=false`.
+- By default, `up` and `down` runs also regenerate Swagger `json` and `yaml` via `./scripts/swagger-generate.sh`.
 
 Check migration status:
 
@@ -127,7 +129,7 @@ The boilerplate uses one boundary rule across features:
 
 ## Swagger
 
-Generate Swagger docs into `docs/swagger`:
+Generate Swagger docs into `docs/`:
 
 ```bash
 ./scripts/swagger-generate.sh
@@ -136,6 +138,11 @@ Generate Swagger docs into `docs/swagger`:
 Optional overrides:
 - `SWAG_MAIN_FILE` to point to a different entry file.
 - `SWAG_OUTPUT_DIR` to change the output folder.
+- `GENERATE_SWAGGER_ON_MIGRATE=false` to skip Swagger regeneration during `./scripts/migrate.sh` and `./scripts/migrate-down.sh`.
+
+Generated files:
+- `docs/swagger.json`
+- `docs/swagger.yaml`
 
 ## Env
 

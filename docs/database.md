@@ -67,5 +67,6 @@ When adding new DB features:
 - Apply one specific migration with `./scripts/migrate.sh <version>`.
 - Roll back the latest migration with `./scripts/migrate-down.sh`.
 - Roll back one specific migration with `./scripts/migrate-down.sh <version>`.
+- `up` and `down` runs also regenerate Swagger docs unless `GENERATE_SWAGGER_ON_MIGRATE=false`.
 - Migration scripts push SQL files directly to the configured database; they do not maintain a `schema_migrations` table.
 - Keep GORM auto-migrate for registered application models during startup.
