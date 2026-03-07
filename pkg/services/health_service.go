@@ -1,12 +1,12 @@
 package services
 
 import (
-	"fiber-boilerplate/pkg/models"
+	"fiber-boilerplate/pkg/entities"
 	repository "fiber-boilerplate/pkg/repositories"
 )
 
 type HealthService interface {
-	GetStatus() models.HealthStatus
+	GetStatus() entities.HealthStatus
 }
 
 type healthService struct {
@@ -19,8 +19,8 @@ func NewHealthService(healthRepository repository.HealthRepository) HealthServic
 	}
 }
 
-func (h *healthService) GetStatus() models.HealthStatus {
-	return models.HealthStatus{
+func (h *healthService) GetStatus() entities.HealthStatus {
+	return entities.HealthStatus{
 		Status:    "ok",
 		Message:   "service is healthy",
 		Service:   h.healthRepository.ServiceName(),
