@@ -48,6 +48,15 @@ ensure_psql() {
   fi
 }
 
+generate_swagger() {
+  if [[ "${GENERATE_SWAGGER_ON_MIGRATE:-true}" != "true" ]]; then
+    return
+  fi
+
+  echo "generating swagger docs"
+  "$ROOT_DIR/scripts/swagger-generate.sh"
+}
+
 psql_cmd() {
   if [[ -n "${DATABASE_URL:-}" ]]; then
     psql "$DATABASE_URL" -v ON_ERROR_STOP=1 "$@"
@@ -171,10 +180,12 @@ case "$ACTION" in
     ;;
   up)
     ensure_psql
+    generate_swagger
     run_up
     ;;
   down)
     ensure_psql
+    generate_swagger
     run_down
     ;;
   help|-h|--help)
