@@ -8,6 +8,7 @@ import (
 
 type Dependencies struct {
 	HealthController *controller.HealthController
+	AuthController   *controller.AuthController
 }
 
 func Register(app *fiber.App, deps Dependencies) {
@@ -15,4 +16,5 @@ func Register(app *fiber.App, deps Dependencies) {
 	v1 := api.Group("/v1")
 
 	registerHealthRoutes(v1, deps.HealthController)
+	registerAuthRoutes(v1, deps.AuthController)
 }
