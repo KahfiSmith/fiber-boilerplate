@@ -1,22 +1,12 @@
 package controllers
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
-	"strings"
-
-	config "fiber-boilerplate/pkg/configs"
 	"fiber-boilerplate/pkg/dto/request"
-	"fiber-boilerplate/pkg/dto/response"
 	"fiber-boilerplate/pkg/entities"
-	serverMiddleware "fiber-boilerplate/pkg/server/middleware"
 	"fiber-boilerplate/pkg/services"
 	"fiber-boilerplate/pkg/utils"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -301,7 +291,7 @@ func (a *AuthController) Logout(c fiber.Ctx) error {
 // @Failure 500 {object} response.APIResponse{error=string}
 // @Router /auth/me [get]
 func (a *AuthController) Me(c fiber.Ctx) error {
-	accessToken, err := bearerToken(c.Get("Authorization"))
+	accessToken, err := accessTokenFromRequest(c)
 	if err != nil {
 		return utils.Error(c, fiber.StatusUnauthorized, "missing or invalid authorization header", nil)
 	}
@@ -328,7 +318,7 @@ func (a *AuthController) Me(c fiber.Ctx) error {
 // @Failure 500 {object} response.APIResponse{error=string}
 // @Router /auth/sessions [get]
 func (a *AuthController) Sessions(c fiber.Ctx) error {
-	accessToken, err := bearerToken(c.Get("Authorization"))
+	accessToken, err := accessTokenFromRequest(c)
 	if err != nil {
 		return utils.Error(c, fiber.StatusUnauthorized, "missing or invalid authorization header", nil)
 	}
@@ -359,7 +349,7 @@ func (a *AuthController) Sessions(c fiber.Ctx) error {
 // @Failure 500 {object} response.APIResponse{error=string}
 // @Router /auth/sessions/revoke [post]
 func (a *AuthController) RevokeSession(c fiber.Ctx) error {
-	accessToken, err := bearerToken(c.Get("Authorization"))
+	accessToken, err := accessTokenFromRequest(c)
 	if err != nil {
 		return utils.Error(c, fiber.StatusUnauthorized, "missing or invalid authorization header", nil)
 	}
@@ -398,7 +388,7 @@ func (a *AuthController) RevokeSession(c fiber.Ctx) error {
 // @Failure 500 {object} response.APIResponse{error=string}
 // @Router /auth/sessions/revoke-all [post]
 func (a *AuthController) RevokeAllSessions(c fiber.Ctx) error {
-	accessToken, err := bearerToken(c.Get("Authorization"))
+	accessToken, err := accessTokenFromRequest(c)
 	if err != nil {
 		return utils.Error(c, fiber.StatusUnauthorized, "missing or invalid authorization header", nil)
 	}
@@ -414,98 +404,3 @@ func (a *AuthController) RevokeAllSessions(c fiber.Ctx) error {
 		"message": "all sessions revoked",
 	})
 }
-
-func parseAndValidate(c fiber.Ctx, payload any) error {
-	body := c.Body()
-	if len(body) == 0 {
-		return errors.New("request body is empty")
-	}
-
-	decoder := json.NewDecoder(bytes.NewReader(body))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(payload); err != nil {
-		return fmt.Errorf("parse body: %w", err)
-	}
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		return errors.New("request body must contain a single JSON object")
-	}
-
-	validateAny := c.Locals(serverMiddleware.ValidatorLocalKey)
-	validate, ok := validateAny.(*validator.Validate)
-	if !ok || validate == nil {
-		return errors.New("validator is not available in request context")
-	}
-
-	return config.ValidateStruct(validate, payload)
-}
-
-func requestMeta(c fiber.Ctx) entities.AuthClientMeta {
-	return entities.AuthClientMeta{
-		IPAddress: c.IP(),
-		UserAgent: c.Get("User-Agent"),
-	}
-}
-
-func authTokenResponse(result entities.AuthTokens) response.AuthTokenResponse {
-	return response.AuthTokenResponse{
-		AccessToken:  result.AccessToken,
-		RefreshToken: result.RefreshToken,
-		TokenType:    result.TokenType,
-		ExpiresInSec: result.ExpiresInSec,
-		SessionID:    result.SessionID,
-		User:         authUserResponse(result.User),
-	}
-}
-
-func otpChallengeResponse(result entities.OTPChallengeResult) response.OTPChallengeResponse {
-	return response.OTPChallengeResponse{
-		ChallengeID:  result.ChallengeID,
-		ExpiresInSec: result.ExpiresInSec,
-		OTP:          result.OTP,
-	}
-}
-
-func authUserResponse(user entities.AuthUser) response.AuthUserResponse {
-	return response.AuthUserResponse{
-		ID:    user.ID,
-		Name:  user.Name,
-		Email: user.Email,
-	}
-}
-
-func authSessionResponses(sessions []entities.AuthSession) []response.AuthSessionResponse {
-	resp := make([]response.AuthSessionResponse, 0, len(sessions))
-	for _, session := range sessions {
-		resp = append(resp, response.AuthSessionResponse{
-			SessionID: session.SessionID,
-			UserAgent: session.UserAgent,
-			IPAddress: session.IPAddress,
-			CreatedAt: session.CreatedAt.Format(timeLayoutRFC3339),
-			ExpiresAt: session.ExpiresAt.Format(timeLayoutRFC3339),
-			Current:   session.Current,
-		})
-	}
-
-	return resp
-}
-
-func bearerToken(authHeader string) (string, error) {
-	trimmed := strings.TrimSpace(authHeader)
-	if trimmed == "" {
-		return "", errors.New("authorization header is empty")
-	}
-
-	parts := strings.SplitN(trimmed, " ", 2)
-	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-		return "", errors.New("authorization header must be Bearer token")
-	}
-
-	token := strings.TrimSpace(parts[1])
-	if token == "" {
-		return "", errors.New("bearer token is empty")
-	}
-
-	return token, nil
-}
-
-const timeLayoutRFC3339 = "2006-01-02T15:04:05Z07:00"
