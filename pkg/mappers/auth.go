@@ -35,6 +35,8 @@ func ToOTPChallengeEntity(challenge models.OTPChallenge) entities.OTPChallenge {
 }
 
 func ToRefreshSessionModel(session entities.RefreshSession) models.AuthSession {
+	session = NormalizeRefreshSession(session)
+
 	return models.AuthSession{
 		SessionID:        session.SessionID,
 		UserID:           session.UserID,
@@ -44,6 +46,12 @@ func ToRefreshSessionModel(session entities.RefreshSession) models.AuthSession {
 		CreatedAt:        session.CreatedAt,
 		ExpiresAt:        session.ExpiresAt,
 	}
+}
+
+func NormalizeRefreshSession(session entities.RefreshSession) entities.RefreshSession {
+	session.UserAgent = sanitizeUserAgent(session.UserAgent)
+	session.IPAddress = sanitizeIPAddress(session.IPAddress)
+	return session
 }
 
 func ToRefreshSessionEntity(session models.AuthSession) entities.RefreshSession {
