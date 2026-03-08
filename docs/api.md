@@ -5,6 +5,7 @@ Current API contract.
 ## Base URL
 - Local: `http://localhost:3000`
 - Base prefix: `/api/v1`
+- Docker Compose local stack: `http://localhost:3000`
 
 ## Endpoint: Health Check
 - Method: `GET`
@@ -24,6 +25,27 @@ Current API contract.
 - `POST /api/v1/auth/sessions/revoke`
 - `POST /api/v1/auth/sessions/revoke-all`
 - Handler implementation: `pkg/controllers/auth.go`
+
+## Auth Protection Model
+- Protected auth endpoints use `Authorization: Bearer <access_token>`.
+- Protected endpoints currently include:
+  - `GET /api/v1/auth/me`
+  - `GET /api/v1/auth/sessions`
+  - `POST /api/v1/auth/sessions/revoke`
+  - `POST /api/v1/auth/sessions/revoke-all`
+- Access tokens include a session identifier (`sid`) claim.
+- Protected endpoints validate both:
+  - JWT signature/expiry
+  - live session presence in the session store
+- Revoking a session in Redis invalidates subsequent protected requests for that session immediately; it no longer waits for access-token expiry.
+
+## Session Management Rationale
+- Session-management endpoints are intentionally public API, not accidental leftovers.
+- This backend treats each refresh token as a server-side session/device record.
+- `GET /api/v1/auth/sessions` exists for device visibility.
+- `POST /api/v1/auth/sessions/revoke` exists for targeted device logout.
+- `POST /api/v1/auth/sessions/revoke-all` exists for account recovery and security reset flows.
+- If the product later chooses a smaller auth surface, these endpoints may be removed as a deliberate simplification, not because they are redundant today.
 
 ## Auth Request Contracts
 - Register:
@@ -133,3 +155,4 @@ Defined in `pkg/dto/response/common.go`:
 - Route registration entrypoint: `pkg/server/routes.go` (can delegate to `pkg/server/routes/*` modules).
 - Response helper functions: `pkg/utils/response.go`.
 - Auth request/response DTOs live in `pkg/dto/request/auth.go` and `pkg/dto/response/auth.go`.
+- Session-backed auth protection is enforced in `pkg/services/auth_service.go`.

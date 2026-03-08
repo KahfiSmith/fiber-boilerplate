@@ -8,6 +8,12 @@ Coding conventions for this repository.
 - Avoid premature abstraction.
 - Keep functions small and cohesive.
 
+## Principal Engineer Expectations
+- Prefer strong defaults and explicit tradeoffs over hidden behavior.
+- Make operationally important behavior easy to discover in code and docs.
+- Do not keep features that lack a clear product, security, or operational reason.
+- When a feature is intentionally kept, document why it exists.
+
 ## Engineering Principles (DRY, SOLID, KISS)
 - DRY:
   - Consolidate repeated logic into shared helpers.
@@ -30,6 +36,7 @@ Coding conventions for this repository.
 - Keep library bootstrap/setup in `pkg/configs`.
 - Keep app/runtime wiring in `pkg/server`.
 - Keep HTTP handlers thin in `pkg/controllers`.
+- Keep request parsing/validation helpers close to the transport layer instead of `pkg/configs`.
 - Keep server middleware in `pkg/server/middleware`.
 - Put HTTP request contracts in `pkg/dto/request`.
 - Put HTTP response contracts in `pkg/dto/response`.
@@ -37,6 +44,7 @@ Coding conventions for this repository.
 - Put reusable model/entity conversion logic in `pkg/mappers`.
 - Put business logic in `pkg/services`.
 - Put data access contracts/implementations in `pkg/repositories`.
+- In `pkg/repositories`, prefer one contract file plus storage-specific implementation files instead of mixing both in one large file.
 
 ## Configuration
 - Add defaults and validation for every new env key.
@@ -60,3 +68,5 @@ Coding conventions for this repository.
 
 ## Documentation
 - Update docs when architecture, config, or behavior changes.
+- When runtime setup changes, document both host-based and container-networked env values if they differ.
+- Keep `README.md`, `docs/*`, and `tools/agent/*` guidance aligned with the current repo reality.

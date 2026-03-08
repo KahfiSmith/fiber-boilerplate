@@ -10,10 +10,13 @@ Goal:
 Context:
 - Related files/folders.
 - Current behavior and expected behavior.
+- Runtime mode when relevant (`host`, `docker compose`, or both).
+- Documentation surfaces that must stay aligned (`README.md`, `docs/*`, `tools/agent/*` when relevant).
 
 Constraints:
 - Architecture rules, package location, style requirements.
 - "Do not change X" boundaries.
+- Whether to preserve, shrink, or justify the existing public API surface.
 
 Validation:
 - Commands to run (go test, go run, lint).
@@ -57,6 +60,7 @@ Mode: feature
 Add GET /api/v1/version endpoint.
 Request/response contracts must use pkg/dto/request and pkg/dto/response.
 Place route registration in pkg/server/routes.go.
+Runtime: docker compose locally, host in production.
 ```
 
 ## `refactor` Mode
@@ -87,6 +91,22 @@ Prompt example:
 Mode: review
 Review changed files for runtime regressions and missing tests.
 Focus on config validation and server startup path.
+```
+
+## `principal-review` Mode
+Use when deciding whether an existing design should stay, be simplified, or be documented better.
+
+Required in prompt:
+- Decision target (API, workflow, architecture rule, runtime setup)
+- Whether the goal is keep / simplify / replace
+- Risk focus (security, maintainability, developer ergonomics, product surface area)
+
+Prompt example:
+```text
+Mode: principal-review
+Evaluate whether auth session-management endpoints should stay in this boilerplate.
+Goal: keep if the operational value is real, otherwise simplify.
+Focus: security value, API surface area, and documentation clarity.
 ```
 
 ## Prompt Rules

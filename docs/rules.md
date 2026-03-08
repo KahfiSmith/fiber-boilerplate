@@ -8,6 +8,8 @@ Repository-specific rules for prompting and execution quality.
 - State hard constraints explicitly (what must not change).
 - Keep one primary objective per prompt.
 - Include validation commands (`go test ./...`, `go run ./cmd/api`) when relevant.
+- Include runtime mode when relevant (`host`, `docker compose`, or mixed host/container setup).
+- State documentation expectations explicitly when behavior, workflow, or repo conventions change.
 - Mention output preference (summary format, file list, next steps).
 
 ## Execution Rules
@@ -20,18 +22,15 @@ Repository-specific rules for prompting and execution quality.
   - server -> wiring/runtime
 - Build concrete objects in composition root (`cmd/api/main.go`) and inject into `server`.
 - Add new env keys to `.env.example`.
-- Update docs when behavior/setup changes.
+- Update `README.md`, `docs/*`, and `tools/agent/*` docs/comments when behavior/setup/workflow changes.
 - Avoid unnecessary file moves or architectural changes.
 
-## Principle Rules
-- DRY:
-  - If the same validation/helper appears in multiple files, extract it once.
-- SOLID:
-  - Do not make `server` construct domain dependencies directly.
-  - Keep each package focused on one reason to change.
-- KISS:
-  - Prefer clear and direct implementations over generic abstractions.
-  - Reject unnecessary indirection when one small function is enough.
+## Principal Engineer Posture
+- Optimize for correctness, leverage, and future maintenance rather than short-term convenience.
+- Prefer deleting ambiguity over adding cleverness.
+- Challenge weak assumptions when they create security, operational, or API-design risk.
+- Preserve optionality: prefer changes that are easy to revert, extend, or verify.
+- Keep public API surface intentional; if a feature exists, document the product or operational reason for it.
 
 ## Safety Rules
 - Fail fast on invalid config.
