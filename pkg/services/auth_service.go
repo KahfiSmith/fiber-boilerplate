@@ -382,9 +382,12 @@ func (s *authService) Logout(ctx context.Context, refreshToken string) error {
 }
 
 func (s *authService) Me(ctx context.Context, accessToken string) (entities.AuthUser, error) {
-	principal, err := s.parseAccessToken(accessToken)
+	principal, err := s.authenticateAccessToken(ctx, accessToken)
 	if err != nil {
-		return entities.AuthUser{}, ErrInvalidAccessToken
+		if errors.Is(err, ErrInvalidAccessToken) {
+			return entities.AuthUser{}, ErrInvalidAccessToken
+		}
+		return entities.AuthUser{}, fmt.Errorf("authenticate access token for me: %w", err)
 	}
 
 	user, err := s.users.FindByID(ctx, principal.UserID)
@@ -403,9 +406,12 @@ func (s *authService) Me(ctx context.Context, accessToken string) (entities.Auth
 }
 
 func (s *authService) ListSessions(ctx context.Context, accessToken string) ([]entities.AuthSession, error) {
-	principal, err := s.parseAccessToken(accessToken)
+	principal, err := s.authenticateAccessToken(ctx, accessToken)
 	if err != nil {
-		return nil, ErrInvalidAccessToken
+		if errors.Is(err, ErrInvalidAccessToken) {
+			return nil, ErrInvalidAccessToken
+		}
+		return nil, fmt.Errorf("authenticate access token for list sessions: %w", err)
 	}
 
 	sessions, err := s.authSession.ListUserSessions(ctx, principal.UserID)
@@ -422,9 +428,12 @@ func (s *authService) ListSessions(ctx context.Context, accessToken string) ([]e
 }
 
 func (s *authService) RevokeSession(ctx context.Context, accessToken string, sessionID string) error {
-	principal, err := s.parseAccessToken(accessToken)
+	principal, err := s.authenticateAccessToken(ctx, accessToken)
 	if err != nil {
-		return ErrInvalidAccessToken
+		if errors.Is(err, ErrInvalidAccessToken) {
+			return ErrInvalidAccessToken
+		}
+		return fmt.Errorf("authenticate access token for revoke session: %w", err)
 	}
 
 	sessionID = strings.TrimSpace(sessionID)
@@ -443,9 +452,12 @@ func (s *authService) RevokeSession(ctx context.Context, accessToken string, ses
 }
 
 func (s *authService) RevokeAllSessions(ctx context.Context, accessToken string) error {
-	principal, err := s.parseAccessToken(accessToken)
+	principal, err := s.authenticateAccessToken(ctx, accessToken)
 	if err != nil {
-		return ErrInvalidAccessToken
+		if errors.Is(err, ErrInvalidAccessToken) {
+			return ErrInvalidAccessToken
+		}
+		return fmt.Errorf("authenticate access token for revoke all sessions: %w", err)
 	}
 
 	if err := s.authSession.RevokeAllSessions(ctx, principal.UserID); err != nil {
@@ -551,6 +563,23 @@ func (s *authService) parseAccessToken(accessToken string) (accessPrincipal, err
 		UserID:    uint(userID),
 		SessionID: claims.SessionID,
 	}, nil
+}
+
+func (s *authService) authenticateAccessToken(ctx context.Context, accessToken string) (accessPrincipal, error) {
+	principal, err := s.parseAccessToken(accessToken)
+	if err != nil {
+		return accessPrincipal{}, err
+	}
+
+	hasSession, err := s.authSession.HasSession(ctx, principal.UserID, principal.SessionID)
+	if err != nil {
+		return accessPrincipal{}, fmt.Errorf("validate access token session: %w", err)
+	}
+	if !hasSession {
+		return accessPrincipal{}, ErrInvalidAccessToken
+	}
+
+	return principal, nil
 }
 
 func (s *authService) enforceRateLimit(ctx context.Context, action string, identifier string) error {
