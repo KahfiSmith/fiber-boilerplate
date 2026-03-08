@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Agent-only: run Windows tools from WSL.
+#
+# Why:
+# - This repo usually lives on a Windows mount (`/mnt/c/...` or `/mnt/d/...`).
+# - Some host-managed tools such as Docker Desktop are exposed through Windows, not this WSL agent shell.
+# - This wrapper makes **Windows** the toolchain source-of-truth while the agent runs in WSL.
+#
+# Usage:
+# - `bash tools/agent/win docker info`
+# - `bash tools/agent/win docker compose up -d`
+#
+# Notes:
+# - Commands execute from the repo root in a Windows PowerShell process.
+# - Prefer `bash tools/agent/doctor` to preflight required tooling (Docker Desktop, PowerShell, `.env`).
+set -euo pipefail
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  sed -n '1,40p' "$0"
+  exit 0
+fi
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ps1="$script_dir/win.ps1"
+ps1_win="$(wslpath -w "$ps1")"
+
+exec powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$ps1_win" "$@"

@@ -5,7 +5,16 @@ Simple Fiber (Go) starter structure with clear layering and bootstrap modules:
 - zap logger
 - fiber app/server
 - gorm postgres connector
+- redis connector
 - validator initializer
+
+## Engineering Posture
+
+This repo should be maintained with a principal-engineer mindset:
+- optimize for correctness, operational clarity, and long-term maintainability
+- prefer small, reversible changes over broad refactors
+- sharpen existing boundaries before adding new abstractions
+- keep docs in sync with code and runtime behavior
 
 ## Structure
 
@@ -40,9 +49,13 @@ Simple Fiber (Go) starter structure with clear layering and bootstrap modules:
 │   │   └── user.go
 │   ├── repositories
 │   │   ├── auth_otp_repository.go
+│   │   ├── auth_session_gorm_repository.go
 │   │   ├── auth_session_repository.go
+│   │   ├── auth_session_redis_repository.go
 │   │   ├── health_repository.go
+│   │   ├── rate_limit_gorm_repository.go
 │   │   ├── rate_limit_repository.go
+│   │   ├── rate_limit_redis_repository.go
 │   │   └── user_repository.go
 │   ├── server
 │   │   ├── app.go
@@ -75,7 +88,36 @@ Simple Fiber (Go) starter structure with clear layering and bootstrap modules:
 go run ./cmd/api
 ```
 
-At startup the app also runs GORM auto-migration for registered DB models.
+Runtime requirements:
+- PostgreSQL
+- Redis
+
+At startup the app also runs GORM auto-migration for registered PostgreSQL models.
+
+## Docker Compose
+
+No code changes are required to use Redis from Docker; the app only needs the right connection address.
+
+Run the full stack:
+
+```bash
+docker compose up --build
+```
+
+Services:
+- API: `http://localhost:3000`
+- PostgreSQL: `localhost:5432`
+- Redis: `localhost:6379`
+
+The bundled `docker-compose.yml` runs the API inside Docker, so it uses:
+- `DATABASE_URL=postgres://postgres:postgres@postgres:5432/fiber_boilerplate?sslmode=disable&TimeZone=UTC`
+- `REDIS_ADDR=redis:6379`
+
+If you run the API on your host machine instead, keep using host addresses instead:
+- `DB_HOST=127.0.0.1`
+- `REDIS_ADDR=127.0.0.1:6379`
+
+Reference env values for container-to-container networking are in `.env.docker.example`.
 
 ## Database Migrations
 
@@ -127,6 +169,21 @@ The boilerplate uses one boundary rule across features:
 - repository: entity <-> model translation via `pkg/mappers`
 - model: persistence-only structs for PostgreSQL/GORM storage
 
+## Session Management APIs
+
+This backend intentionally keeps session-management endpoints:
+- `GET /api/v1/auth/sessions`
+- `POST /api/v1/auth/sessions/revoke`
+- `POST /api/v1/auth/sessions/revoke-all`
+
+Reason:
+- refresh tokens are stored as server-side sessions
+- one refresh token represents one login/device context
+- users may need to inspect active sessions, revoke one compromised device, or revoke every device after a password reset or suspected takeover
+- revoking a session is stronger than only rotating refresh because protected endpoints also validate live session presence
+
+If you want a smaller auth surface for an MVP, those APIs can be removed later as a deliberate product simplification.
+
 ## Swagger
 
 Generate Swagger docs into `docs/`:
@@ -149,6 +206,7 @@ Generated files:
 Copy `.env.example` into `.env` and adjust DB values.
 You can use `DATABASE_URL` (PostgreSQL URL format) or individual `DB_*` keys.
 Important DB pool keys: `DB_MAX_OPEN_CONNS`, `DB_MAX_IDLE_CONNS`, `DB_CONN_MAX_LIFETIME`, `DB_CONN_MAX_IDLE_TIME`.
+Redis keys: `REDIS_ADDR`, `REDIS_USERNAME`, `REDIS_PASSWORD`, `REDIS_DB`, `REDIS_KEY_PREFIX`.
 Auth keys: `JWT_SECRET`, `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_TTL`, `BCRYPT_COST`, `AUTH_RATE_LIMIT_PER_MINUTE`, `AUTH_OTP_TTL`, `AUTH_OTP_MAX_ATTEMPTS`, `AUTH_DEBUG_EXPOSE_OTP`.
 Forgot-password uses the same OTP TTL and attempt settings as login OTP.
 Legacy env aliases still supported: `HTTP_ADDR`, `GRACEFUL_SHUTDOWN_MS`, and `AUTH_DEBUG_EXPOSE_TOKENS`.
@@ -168,7 +226,8 @@ Legacy env aliases still supported: `HTTP_ADDR`, `GRACEFUL_SHUTDOWN_MS`, and `AU
 - HTTP request DTOs: `pkg/dto/request/*`
 - HTTP response DTOs: `pkg/dto/response/*`
 - Persistence-only models: `pkg/models/*`
-- PostgreSQL persistence covers `users`, auth sessions, OTP challenges, and auth rate limits.
+- PostgreSQL persistence covers `users` and OTP challenges.
+- Redis persistence covers refresh sessions and auth rate limits.
 
 ## Documentation
 
@@ -178,6 +237,9 @@ Legacy env aliases still supported: `HTTP_ADDR`, `GRACEFUL_SHUTDOWN_MS`, and `AU
 - Architecture: `docs/architecture.md`
 - API contract: `docs/api.md`
 - Database conventions: `docs/database.md`
+
+Documentation maintenance rule:
+- update `README.md`, `docs/*`, and `tools/agent/*` docs/comments whenever behavior, runtime setup, workflows, or repository conventions change
 
 ## Health Check
 
