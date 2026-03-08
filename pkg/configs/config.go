@@ -17,6 +17,7 @@ type Config struct {
 	Fiber FiberConfig
 	Log   LogConfig
 	DB    DBConfig
+	Redis RedisConfig
 	Auth  AuthConfig
 }
 
@@ -80,6 +81,12 @@ func Load() (Config, error) {
 	}
 	cfg.DB = dbCfg
 
+	redisCfg, err := loadRedisConfig(v)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.Redis = redisCfg
+
 	authCfg, err := loadAuthConfig(v)
 	if err != nil {
 		return Config{}, err
@@ -111,6 +118,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("LOG_LEVEL", "info")
 	v.SetDefault("LOG_ENCODING", "console")
 	setDBDefaults(v)
+	setRedisDefaults(v)
 	setAuthDefaults(v)
 }
 
@@ -147,6 +155,9 @@ func (c Config) Validate() error {
 		return fmt.Errorf("LOG_ENCODING must be one of: json, console")
 	}
 	if err := validateDBConfig(c.DB); err != nil {
+		return err
+	}
+	if err := validateRedisConfig(c.Redis); err != nil {
 		return err
 	}
 

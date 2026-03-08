@@ -52,9 +52,7 @@ func CloseGormDB(db *gorm.DB) error {
 func AutoMigrate(db *gorm.DB) error {
 	if err := db.AutoMigrate(
 		&models.User{},
-		&models.AuthSession{},
 		&models.OTPChallenge{},
-		&models.AuthRateLimit{},
 	); err != nil {
 		return fmt.Errorf("auto migrate auth models: %w", err)
 	}

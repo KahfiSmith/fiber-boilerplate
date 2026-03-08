@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -74,14 +73,6 @@ func validateAuthConfig(c AuthConfig) error {
 	}
 	if err := requirePositiveInt("AUTH_OTP_MAX_ATTEMPTS", c.OTPMaxAttempts); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func ValidateStruct(validate *validator.Validate, payload any) error {
-	if err := validate.Struct(payload); err != nil {
-		return fmt.Errorf("validate request: %w", err)
 	}
 
 	return nil
