@@ -39,6 +39,12 @@ func main() {
 	}
 	defer config.CloseGormDB(db)
 
+	redisClient, err := config.NewRedisClient(cfg)
+	if err != nil {
+		log.Fatal("failed to connect redis", config.Err(err))
+	}
+	defer config.CloseRedisClient(redisClient)
+
 	if err := config.AutoMigrate(db); err != nil {
 		log.Fatal("failed to auto migrate models", config.Err(err))
 	}
@@ -48,9 +54,9 @@ func main() {
 	healthController := controller.NewHealthController(healthService)
 
 	userRepo := repository.NewUserRepository(db)
-	authSessionRepo := repository.NewAuthSessionRepository(db)
+	authSessionRepo := repository.NewRedisAuthSessionRepository(redisClient, cfg.Redis.KeyPrefix)
 	otpRepo := repository.NewOTPRepository(db)
-	rateLimitRepo := repository.NewRateLimitRepository(db)
+	rateLimitRepo := repository.NewRedisRateLimitRepository(redisClient, cfg.Redis.KeyPrefix)
 	authService := services.NewAuthService(services.AuthSettings{
 		JWTSecret:       cfg.Auth.JWTSecret,
 		AccessTokenTTL:  cfg.Auth.AccessTokenTTL,
