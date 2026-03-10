@@ -7,6 +7,11 @@ Current API contract.
 - Base prefix: `/api/v1`
 - Docker Compose local stack: `http://localhost:3000`
 
+## Optional Observability Endpoints
+- `GET /metrics` when `APP_ENABLE_METRICS=true`
+- `/debug/pprof/*` when `APP_ENABLE_PPROF=true`
+- These routes are intentionally outside `/api/v1`.
+
 ## Endpoint: Health Check
 - Method: `GET`
 - Path: `/api/v1/health`

@@ -1,274 +1,157 @@
 # Fiber Boilerplate
 
-Simple Fiber (Go) starter structure with clear layering and bootstrap modules:
-- viper config loader
-- zap logger
-- fiber app/server
-- gorm postgres connector
-- redis connector
-- validator initializer
+Backend starter built with Go, Fiber, PostgreSQL, and Redis. This repository is structured for small-to-medium API services that need clear layering, auth flows, operational visibility, and a predictable bootstrap path.
 
-## Engineering Posture
+## Tech Stack
 
-This repo should be maintained with a principal-engineer mindset:
-- optimize for correctness, operational clarity, and long-term maintainability
-- prefer small, reversible changes over broad refactors
-- sharpen existing boundaries before adding new abstractions
-- keep docs in sync with code and runtime behavior
+- Go `1.25.4`
+- Fiber v3 for HTTP routing and middleware
+- GORM + PostgreSQL for relational persistence
+- Redis for refresh-session storage and rate limiting
+- Viper for configuration loading
+- Zap for structured logging
+- `go-playground/validator` for request validation
+- Swagger generation into `docs/swagger.json` and `docs/swagger.yaml`
 
-## Structure
+## Features
+
+- Health check endpoint at `GET /api/v1/health`
+- Email/password registration
+- Login with OTP challenge verification
+- Forgot-password and password reset flow with OTP
+- JWT access tokens
+- Server-side refresh sessions stored in Redis
+- Session management endpoints for device/session visibility and revocation
+- Redis-backed auth rate limiting
+- Env-gated `/metrics` and `/debug/pprof/*` observability endpoints
+- SQL migration scripts plus GORM auto-migration for registered models
+
+## API Surface
+
+- `GET /api/v1/health`
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/forgot-password`
+- `POST /api/v1/auth/otp/verify`
+- `POST /api/v1/auth/reset-password`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/me`
+- `GET /api/v1/auth/sessions`
+- `POST /api/v1/auth/sessions/revoke`
+- `POST /api/v1/auth/sessions/revoke-all`
+
+Detailed contract notes live in `docs/api.md`.
+
+## Project Structure
 
 ```text
 .
-├── db
-│   └── migrations
-├── cmd
-│   └── api
-│       └── main.go
-├── pkg
-│   ├── configs
-│   ├── controllers
-│   │   ├── auth.go
-│   │   └── health.go
-│   ├── dto
-│   │   ├── request
-│   │   │   └── auth.go
-│   │   └── response
-│   │       ├── auth.go
-│   │       ├── common.go
-│   │       └── health.go
-│   ├── entities
-│   │   ├── auth.go
-│   │   ├── health.go
-│   │   └── user.go
-│   ├── mappers
-│   │   ├── auth.go
-│   │   └── user.go
-│   ├── models
-│   │   ├── auth.go
-│   │   └── user.go
-│   ├── repositories
-│   │   ├── auth_otp_repository.go
-│   │   ├── auth_session_gorm_repository.go
-│   │   ├── auth_session_repository.go
-│   │   ├── auth_session_redis_repository.go
-│   │   ├── health_repository.go
-│   │   ├── rate_limit_gorm_repository.go
-│   │   ├── rate_limit_repository.go
-│   │   ├── rate_limit_redis_repository.go
-│   │   └── user_repository.go
-│   ├── server
-│   │   ├── app.go
-│   │   ├── middleware
-│   │   │   └── request.go
-│   │   ├── routes.go
-│   │   ├── routes
-│   │   │   ├── auth.go
-│   │   │   ├── health.go
-│   │   │   └── register.go
-│   │   └── run.go
-│   ├── services
-│   │   ├── auth_service.go
-│   │   └── health_service.go
-│   └── utils
-│       └── response.go
-├── .env.example
-├── go.mod
-├── go.sum
+├── cmd/api
+├── db/migrations
+├── docs
+├── pkg/configs
+├── pkg/controllers
+├── pkg/dto
+├── pkg/entities
+├── pkg/mappers
+├── pkg/models
+├── pkg/repositories
+├── pkg/server
+├── pkg/services
+├── pkg/utils
 └── scripts
-    ├── migrate.sh
-    ├── migrate-down.sh
-    ├── migrate-status.sh
-    └── swagger-generate.sh
 ```
 
-## Run
+Architecture rule of thumb:
 
-```bash
-go run ./cmd/api
-```
+- `controllers` parse HTTP input and return HTTP responses
+- `services` contain business logic
+- `repositories` handle persistence and model/entity translation
+- `server` wires routes, middleware, and runtime startup
+- `configs` owns third-party bootstrap and env config
 
-Runtime requirements:
+## Prerequisites
+
+- Go `1.25.4`
 - PostgreSQL
 - Redis
+- `psql` if you want to run SQL migrations
+- `swag` if `GENERATE_SWAGGER_ON_MIGRATE=true`
 
-At startup the app also runs GORM auto-migration for registered PostgreSQL models.
+## Installation
 
-## Docker Compose
+### Option 1: Host-based setup
 
-No code changes are required to use Redis from Docker; the app only needs the right connection address.
-
-Run the full stack:
-
-```bash
-docker compose up --build
-```
-
-Services:
-- API: `http://localhost:3000`
-- PostgreSQL: `localhost:5432`
-- Redis: `localhost:6379`
-
-The bundled `docker-compose.yml` runs the API inside Docker, so it uses:
-- `DATABASE_URL=postgres://postgres:postgres@postgres:5432/fiber_boilerplate?sslmode=disable&TimeZone=UTC`
-- `REDIS_ADDR=redis:6379`
-
-If you run the API on your host machine instead, keep using host addresses instead:
-- `DB_HOST=127.0.0.1`
-- `REDIS_ADDR=127.0.0.1:6379`
-
-Reference env values for container-to-container networking are in `.env.docker.example`.
-
-## Database Migrations
-
-Requirements:
-- `psql` must be installed.
-- `.env` or environment must point to the target PostgreSQL database.
-- Migration scripts only execute SQL files from `db/migrations`.
-- `swag` must also be installed unless `GENERATE_SWAGGER_ON_MIGRATE=false`.
-- By default, `up` and `down` runs also regenerate Swagger `json` and `yaml` via `./scripts/swagger-generate.sh`.
-
-Check migration status:
+1. Copy the env file:
 
 ```bash
-./scripts/migrate-status.sh
+cp .env.example .env
 ```
 
-`status` shows available local migration files, not applied database history.
+2. Update the values in `.env` for your local PostgreSQL and Redis instances.
 
-Run SQL migrations:
+3. Run migrations:
 
 ```bash
 ./scripts/migrate.sh
 ```
 
-Run a specific migration by version:
+4. Start the API:
 
 ```bash
-./scripts/migrate.sh 000001_create_users_table
+go run ./cmd/api
 ```
 
-Rollback the latest `*.down.sql` file:
+### Option 2: Docker Compose setup
+
+The included `docker-compose.yml` starts:
+
+- API on `http://localhost:3000`
+- PostgreSQL on `localhost:5432`
+- Redis on `localhost:6379`
+
+Run everything:
 
 ```bash
-./scripts/migrate-down.sh
+docker compose up --build
 ```
 
-Rollback a specific migration file:
+The containerized API uses:
 
-```bash
-./scripts/migrate-down.sh 000001_create_users_table
-```
+- `DATABASE_URL=postgres://postgres:postgres@postgres:5432/fiber_boilerplate?sslmode=disable&TimeZone=UTC`
+- `REDIS_ADDR=redis:6379`
 
-## Data Flow
+If you run the API on your host while PostgreSQL and Redis run in Docker, use host addresses instead:
 
-The boilerplate uses one boundary rule across features:
+- `DB_HOST=127.0.0.1`
+- `REDIS_ADDR=127.0.0.1:6379`
 
-- controller: request DTO -> entity -> response DTO
-- service: entity-only business logic
-- repository: entity <-> model translation via `pkg/mappers`
-- model: persistence-only structs for PostgreSQL/GORM storage
+## Usage Guide
 
-## Session Management APIs
-
-This backend intentionally keeps session-management endpoints:
-- `GET /api/v1/auth/sessions`
-- `POST /api/v1/auth/sessions/revoke`
-- `POST /api/v1/auth/sessions/revoke-all`
-
-Reason:
-- refresh tokens are stored as server-side sessions
-- one refresh token represents one login/device context
-- users may need to inspect active sessions, revoke one compromised device, or revoke every device after a password reset or suspected takeover
-- revoking a session is stronger than only rotating refresh because protected endpoints also validate live session presence
-
-If you want a smaller auth surface for an MVP, those APIs can be removed later as a deliberate product simplification.
-
-## Swagger
-
-Generate Swagger docs into `docs/`:
-
-```bash
-./scripts/swagger-generate.sh
-```
-
-Optional overrides:
-- `SWAG_MAIN_FILE` to point to a different entry file.
-- `SWAG_OUTPUT_DIR` to change the output folder.
-- `GENERATE_SWAGGER_ON_MIGRATE=false` to skip Swagger regeneration during `./scripts/migrate.sh` and `./scripts/migrate-down.sh`.
-
-Generated files:
-- `docs/swagger.json`
-- `docs/swagger.yaml`
-
-## Env
-
-Copy `.env.example` into `.env` and adjust DB values.
-You can use `DATABASE_URL` (PostgreSQL URL format) or individual `DB_*` keys.
-Important DB pool keys: `DB_MAX_OPEN_CONNS`, `DB_MAX_IDLE_CONNS`, `DB_CONN_MAX_LIFETIME`, `DB_CONN_MAX_IDLE_TIME`.
-Redis keys: `REDIS_ADDR`, `REDIS_USERNAME`, `REDIS_PASSWORD`, `REDIS_DB`, `REDIS_KEY_PREFIX`.
-Auth keys: `JWT_SECRET`, `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_TTL`, `BCRYPT_COST`, `AUTH_RATE_LIMIT_PER_MINUTE`, `AUTH_OTP_TTL`, `AUTH_OTP_MAX_ATTEMPTS`, `AUTH_DEBUG_EXPOSE_OTP`.
-Forgot-password uses the same OTP TTL and attempt settings as login OTP.
-Legacy env aliases still supported: `HTTP_ADDR`, `GRACEFUL_SHUTDOWN_MS`, and `AUTH_DEBUG_EXPOSE_TOKENS`.
-`FRONTEND_BASE_URL` is currently unused by this backend.
-
-## Routing and Controllers
-
-- Route registration entrypoint: `pkg/server/routes.go`
-- Route groups/modules: `pkg/server/routes/*`
-- HTTP handlers (controllers): `pkg/controllers/*`
-- Server/transport middleware: `pkg/server/middleware/*`
-
-## Data Contracts
-
-- Domain/business objects: `pkg/entities/*`
-- Model/entity mappers: `pkg/mappers/*`
-- HTTP request DTOs: `pkg/dto/request/*`
-- HTTP response DTOs: `pkg/dto/response/*`
-- Persistence-only models: `pkg/models/*`
-- PostgreSQL persistence covers `users` and OTP challenges.
-- Redis persistence covers refresh sessions and auth rate limits.
-
-## Documentation
-
-- Prompt patterns: `docs/patterns.md`
-- Agent rules: `docs/rules.md`
-- Workflow: `docs/workflow.md`
-- Architecture: `docs/architecture.md`
-- API contract: `docs/api.md`
-- Database conventions: `docs/database.md`
-
-Documentation maintenance rule:
-- update `README.md`, `docs/*`, and `tools/agent/*` docs/comments whenever behavior, runtime setup, workflows, or repository conventions change
-
-## Health Check
+### Health check
 
 ```bash
 curl http://localhost:3000/api/v1/health
 ```
 
-Response example:
-```json
-{
-  "success": true,
-  "data": {
-    "status": "ok",
-    "message": "service is healthy",
-    "service": "fiber-boilerplate",
-    "timestamp": "2026-03-05T10:00:00Z"
-  }
-}
+### Register
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Kahfi","email":"kahfi@example.com","password":"Secret123"}'
 ```
 
-## Auth Quick Test
+### Login
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"kahfi@example.com","password":"password123"}'
+  -d '{"email":"kahfi@example.com","password":"Secret123"}'
 ```
 
-Verify OTP:
+### Verify OTP
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/auth/otp/verify \
@@ -276,7 +159,14 @@ curl -X POST http://localhost:3000/api/v1/auth/otp/verify \
   -d '{"challenge_id":"<challenge_id>","otp":"123456"}'
 ```
 
-Forgot password:
+### Session-backed protected request
+
+```bash
+curl http://localhost:3000/api/v1/auth/me \
+  -H "Authorization: Bearer <access_token>"
+```
+
+### Forgot password
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/auth/forgot-password \
@@ -284,10 +174,136 @@ curl -X POST http://localhost:3000/api/v1/auth/forgot-password \
   -d '{"email":"kahfi@example.com"}'
 ```
 
-Reset password:
+### Reset password
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/auth/reset-password \
   -H "Content-Type: application/json" \
-  -d '{"challenge_id":"<challenge_id>","otp":"123456","new_password":"newpassword123"}'
+  -d '{"challenge_id":"<challenge_id>","otp":"123456","new_password":"NewSecret123"}'
 ```
+
+## Configuration
+
+Copy `.env.example` to `.env` and adjust values for your environment.
+
+Important groups:
+
+- App: `APP_HOST`, `APP_PORT`, `APP_READ_TIMEOUT`, `APP_WRITE_TIMEOUT`, `APP_SHUTDOWN_TIMEOUT`, `APP_BODY_LIMIT_MB`, `APP_PREFORK`
+- Observability: `APP_ENABLE_METRICS`, `APP_ENABLE_PPROF`
+- Logging: `LOG_LEVEL`, `LOG_ENCODING`
+- Database: `DATABASE_URL` or `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSLMODE`, `DB_TIMEZONE`
+- DB pool tuning: `DB_MAX_OPEN_CONNS`, `DB_MAX_IDLE_CONNS`, `DB_CONN_MAX_LIFETIME`, `DB_CONN_MAX_IDLE_TIME`
+- Redis: `REDIS_ADDR`, `REDIS_USERNAME`, `REDIS_PASSWORD`, `REDIS_DB`, `REDIS_KEY_PREFIX`
+- Auth: `JWT_SECRET`, `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_TTL`, `BCRYPT_COST`, `AUTH_RATE_LIMIT_PER_MINUTE`, `AUTH_OTP_TTL`, `AUTH_OTP_MAX_ATTEMPTS`, `AUTH_DEBUG_EXPOSE_OTP`
+
+Notes:
+
+- `AUTH_DEBUG_EXPOSE_OTP=true` is useful for local development only
+- `APP_ENABLE_METRICS=true` exposes `GET /metrics`
+- `APP_ENABLE_PPROF=true` exposes `/debug/pprof/*`
+- keep `APP_ENABLE_PPROF=false` unless the endpoint is protected by trusted network controls
+
+## Common Commands
+
+Run the API:
+
+```bash
+go run ./cmd/api
+```
+
+Run tests:
+
+```bash
+go test ./...
+```
+
+Check available migrations:
+
+```bash
+./scripts/migrate-status.sh
+```
+
+Run all SQL migrations:
+
+```bash
+./scripts/migrate.sh
+```
+
+Run one migration:
+
+```bash
+./scripts/migrate.sh 000003_add_users_email_lower_index
+```
+
+Rollback the latest migration:
+
+```bash
+./scripts/migrate-down.sh
+```
+
+Generate Swagger:
+
+```bash
+./scripts/swagger-generate.sh
+```
+
+## Observability
+
+Enable metrics:
+
+```bash
+APP_ENABLE_METRICS=true go run ./cmd/api
+curl http://localhost:3000/metrics
+```
+
+Enable pprof:
+
+```bash
+APP_ENABLE_PPROF=true go run ./cmd/api
+go tool pprof http://localhost:3000/debug/pprof/profile
+```
+
+Use metrics for ongoing monitoring such as request count, request latency, in-flight traffic, goroutines, and memory usage.
+
+Use `pprof` for deep debugging when the process is already slow or memory-heavy.
+
+## Database and Migration Notes
+
+- SQL files live in `db/migrations`
+- migration scripts execute files directly from the folder and do not maintain a `schema_migrations` table
+- registered GORM models still auto-migrate on startup
+- users are looked up case-insensitively, and a matching PostgreSQL index is included in `000003_add_users_email_lower_index`
+
+## Session Management Design
+
+This repo intentionally keeps session-management APIs:
+
+- `GET /api/v1/auth/sessions`
+- `POST /api/v1/auth/sessions/revoke`
+- `POST /api/v1/auth/sessions/revoke-all`
+
+Reason:
+
+- refresh tokens are stored as server-side sessions
+- one refresh token maps to one login/device context
+- users can inspect active sessions and revoke compromised devices
+- protected access-token requests also validate live session presence
+
+If you want a smaller auth surface for an MVP, remove those endpoints deliberately rather than treating them as leftovers.
+
+## Documentation
+
+- Architecture: `docs/architecture.md`
+- API reference: `docs/api.md`
+- Database notes: `docs/database.md`
+- Repository rules: `docs/rules.md`
+- Coding standards: `docs/coding-standards.md`
+- Implementation patterns: `docs/patterns.md`
+- Workflow notes: `docs/workflow.md`
+
+## Production Notes
+
+- keep `JWT_SECRET` strong and private
+- do not expose `APP_ENABLE_PPROF=true` to the public internet
+- review Redis persistence strategy before using this as-is for high-scale production auth
+- treat `AUTH_DEBUG_EXPOSE_OTP=true` as a development-only setting

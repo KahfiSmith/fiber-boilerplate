@@ -51,6 +51,7 @@ Database setup and conventions.
 - Redis startup health check: `client.Ping()`
 - Startup auto-migrate: registered models are migrated via `config.AutoMigrate`
 - Registered PostgreSQL auth tables: `otp_challenges`
+- Email lookups remain case-insensitive through `LOWER(email)` queries and a matching SQL index in `db/migrations/000003_add_users_email_lower_index.up.sql`
 
 ## Runtime Requirement
 - PostgreSQL is required at startup.
