@@ -33,6 +33,7 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 }
 
 func (r *userRepository) Create(ctx context.Context, user *entities.User) error {
+	user.Email = normalizeStoredEmail(user.Email)
 	modelUser := mappers.ToUserModel(user)
 
 	err := r.db.WithContext(ctx).Create(&modelUser).Error
@@ -53,7 +54,7 @@ func (r *userRepository) FindByEmail(ctx context.Context, email string) (*entiti
 	var modelUser models.User
 
 	err := r.db.WithContext(ctx).
-		Where("LOWER(email) = ?", strings.ToLower(strings.TrimSpace(email))).
+		Where("LOWER(email) = ?", normalizeStoredEmail(email)).
 		First(&modelUser).
 		Error
 	if err != nil {
@@ -65,6 +66,10 @@ func (r *userRepository) FindByEmail(ctx context.Context, email string) (*entiti
 
 	user := mappers.ToUserEntity(modelUser)
 	return &user, nil
+}
+
+func normalizeStoredEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
 }
 
 func (r *userRepository) FindByID(ctx context.Context, id uint) (*entities.User, error) {
