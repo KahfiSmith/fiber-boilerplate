@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode"
 
 	"fiber-boilerplate/pkg/entities"
 	serverMiddleware "fiber-boilerplate/pkg/server/middleware"
@@ -59,17 +60,21 @@ func accessTokenFromRequest(c fiber.Ctx) (string, error) {
 }
 
 func bearerToken(authHeader string) (string, error) {
-	trimmed := strings.TrimSpace(authHeader)
+	trimmed := strings.TrimLeftFunc(authHeader, unicode.IsSpace)
 	if trimmed == "" {
 		return "", errors.New("authorization header is empty")
 	}
 
-	parts := strings.SplitN(trimmed, " ", 2)
-	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+	schemeEnd := strings.IndexFunc(trimmed, unicode.IsSpace)
+	if schemeEnd == -1 {
 		return "", errors.New("authorization header must be Bearer token")
 	}
 
-	token := strings.TrimSpace(parts[1])
+	if !strings.EqualFold(trimmed[:schemeEnd], "Bearer") {
+		return "", errors.New("authorization header must be Bearer token")
+	}
+
+	token := strings.TrimSpace(trimmed[schemeEnd:])
 	if token == "" {
 		return "", errors.New("bearer token is empty")
 	}
