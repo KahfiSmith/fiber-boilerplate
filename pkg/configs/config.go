@@ -34,6 +34,8 @@ type FiberConfig struct {
 	WriteTimeout time.Duration
 	BodyLimitMB  int
 	Prefork      bool
+	EnableMetrics bool
+	EnablePprof   bool
 }
 
 type LogConfig struct {
@@ -64,10 +66,12 @@ func Load() (Config, error) {
 			ShutdownTimeout: v.GetDuration("APP_SHUTDOWN_TIMEOUT"),
 		},
 		Fiber: FiberConfig{
-			ReadTimeout:  v.GetDuration("APP_READ_TIMEOUT"),
-			WriteTimeout: v.GetDuration("APP_WRITE_TIMEOUT"),
-			BodyLimitMB:  v.GetInt("APP_BODY_LIMIT_MB"),
-			Prefork:      v.GetBool("APP_PREFORK"),
+			ReadTimeout:   v.GetDuration("APP_READ_TIMEOUT"),
+			WriteTimeout:  v.GetDuration("APP_WRITE_TIMEOUT"),
+			BodyLimitMB:   v.GetInt("APP_BODY_LIMIT_MB"),
+			Prefork:       v.GetBool("APP_PREFORK"),
+			EnableMetrics: v.GetBool("APP_ENABLE_METRICS"),
+			EnablePprof:   v.GetBool("APP_ENABLE_PPROF"),
 		},
 		Log: LogConfig{
 			Level:    v.GetString("LOG_LEVEL"),
@@ -114,6 +118,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("APP_SHUTDOWN_TIMEOUT", "10s")
 	v.SetDefault("APP_BODY_LIMIT_MB", 4)
 	v.SetDefault("APP_PREFORK", false)
+	v.SetDefault("APP_ENABLE_METRICS", false)
+	v.SetDefault("APP_ENABLE_PPROF", false)
 
 	v.SetDefault("LOG_LEVEL", "info")
 	v.SetDefault("LOG_ENCODING", "console")
