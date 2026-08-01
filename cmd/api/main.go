@@ -15,9 +15,10 @@ import (
 	"syscall"
 
 	config "fiber-boilerplate/internal/core/configs"
+	"fiber-boilerplate/internal/core/server"
+	"fiber-boilerplate/internal/domain/health"
 	controller "fiber-boilerplate/pkg/controllers"
 	repository "fiber-boilerplate/pkg/repositories"
-	"fiber-boilerplate/internal/core/server"
 	"fiber-boilerplate/pkg/services"
 )
 
@@ -49,9 +50,9 @@ func main() {
 		log.Fatal("failed to auto migrate models", config.Err(err))
 	}
 
-	healthRepo := repository.NewHealthRepository(cfg.App.Name)
-	healthService := services.NewHealthService(healthRepo)
-	healthController := controller.NewHealthController(healthService)
+	healthRepo := health.NewHealthRepository(cfg.App.Name)
+	healthService := health.NewHealthService(healthRepo)
+	healthController := health.NewHealthController(healthService)
 
 	userRepo := repository.NewUserRepository(db)
 	authSessionRepo := repository.NewRedisAuthSessionRepository(redisClient, cfg.Redis.KeyPrefix)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	controller "fiber-boilerplate/pkg/controllers"
+	"fiber-boilerplate/internal/domain/health"
 	config "fiber-boilerplate/internal/core/configs"
 	serverMiddleware "fiber-boilerplate/internal/pkg/middleware"
 	"fiber-boilerplate/internal/core/server/observability"
@@ -15,7 +16,7 @@ import (
 )
 
 type Dependencies struct {
-	HealthController *controller.HealthController
+	HealthController *health.HealthController
 	AuthController   *controller.AuthController
 }
 
