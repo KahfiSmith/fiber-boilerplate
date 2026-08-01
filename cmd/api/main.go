@@ -14,7 +14,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	config "fiber-boilerplate/pkg/configs"
+	config "fiber-boilerplate/internal/core/configs"
 	controller "fiber-boilerplate/pkg/controllers"
 	repository "fiber-boilerplate/pkg/repositories"
 	"fiber-boilerplate/pkg/server"

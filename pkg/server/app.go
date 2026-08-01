@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	controller "fiber-boilerplate/pkg/controllers"
-	config "fiber-boilerplate/pkg/configs"
+	config "fiber-boilerplate/internal/core/configs"
 	serverMiddleware "fiber-boilerplate/pkg/server/middleware"
 	"fiber-boilerplate/pkg/server/observability"
 

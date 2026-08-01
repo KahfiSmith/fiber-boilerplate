@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 
-	config "fiber-boilerplate/pkg/configs"
+	config "fiber-boilerplate/internal/core/configs"
 
 	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
