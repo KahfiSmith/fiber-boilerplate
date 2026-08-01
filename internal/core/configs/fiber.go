@@ -1,7 +1,7 @@
 package config
 
 import (
-	serverMiddleware "fiber-boilerplate/pkg/server/middleware"
+	serverMiddleware "fiber-boilerplate/internal/pkg/middleware"
 
 	"github.com/gofiber/fiber/v3"
 	recovermw "github.com/gofiber/fiber/v3/middleware/recover"

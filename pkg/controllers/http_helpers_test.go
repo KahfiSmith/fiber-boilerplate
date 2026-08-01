@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"fiber-boilerplate/pkg/dto/request"
-	serverMiddleware "fiber-boilerplate/pkg/server/middleware"
+	serverMiddleware "fiber-boilerplate/internal/pkg/middleware"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"

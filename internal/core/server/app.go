@@ -6,7 +6,7 @@ import (
 
 	controller "fiber-boilerplate/pkg/controllers"
 	config "fiber-boilerplate/internal/core/configs"
-	serverMiddleware "fiber-boilerplate/pkg/server/middleware"
+	serverMiddleware "fiber-boilerplate/internal/pkg/middleware"
 	"fiber-boilerplate/internal/core/server/observability"
 
 	"github.com/gofiber/fiber/v3"

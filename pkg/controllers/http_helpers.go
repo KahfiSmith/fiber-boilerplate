@@ -10,7 +10,7 @@ import (
 	"unicode"
 
 	"fiber-boilerplate/pkg/entities"
-	serverMiddleware "fiber-boilerplate/pkg/server/middleware"
+	serverMiddleware "fiber-boilerplate/internal/pkg/middleware"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
