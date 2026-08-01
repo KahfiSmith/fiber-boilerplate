@@ -7,6 +7,7 @@ import (
 	"fiber-boilerplate/src/common/config"
 	"fiber-boilerplate/src/common/server"
 	"fiber-boilerplate/src/modules/health"
+	"fiber-boilerplate/src/modules/auth"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -25,9 +26,13 @@ func main() {
 	healthService := health.NewHealthService(cfg.App.Name)
 	healthController := health.NewHealthController(healthService)
 
+	authService := auth.NewAuthService()
+	authController := auth.NewAuthController(authService)
+
 	// 4. Register Routes
 	server.RegisterRoutes(app, server.Dependencies{
 		HealthController: healthController,
+		AuthController:   authController,
 	})
 
 	// 5. Start server
