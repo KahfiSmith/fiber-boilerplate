@@ -1,9 +1,15 @@
 package response
 
 import (
-
 	"github.com/gofiber/fiber/v3"
 )
+
+type APIResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message,omitempty"`
+	Data    any    `json:"data,omitempty"`
+	Error   any    `json:"error,omitempty"`
+}
 
 func Success(c fiber.Ctx, statusCode int, data any) error {
 	return c.Status(statusCode).JSON(APIResponse{

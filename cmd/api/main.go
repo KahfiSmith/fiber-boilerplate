@@ -1,88 +1,39 @@
-// @title Fiber Boilerplate API
-// @version 1.0
-// @description HTTP API for the Fiber boilerplate authentication and health endpoints.
-// @BasePath /api/v1
-// @schemes http https
-// @securityDefinitions.apikey BearerAuth
-// @in header
-// @name Authorization
 package main
 
 import (
-	"context"
 	"fmt"
-	"os/signal"
-	"syscall"
+	"log"
+	
+	"fiber-boilerplate/src/common/config"
+	"fiber-boilerplate/src/common/server"
+	"fiber-boilerplate/src/modules/health"
 
-	config "fiber-boilerplate/internal/core/configs"
-	"fiber-boilerplate/internal/core/server"
-	"fiber-boilerplate/internal/domain/health"
-	controller "fiber-boilerplate/pkg/controllers"
-	repository "fiber-boilerplate/pkg/repositories"
-	"fiber-boilerplate/pkg/services"
+	"github.com/gofiber/fiber/v3"
 )
 
 func main() {
+	// 1. Load config
 	cfg, err := config.Load()
 	if err != nil {
-		panic(fmt.Errorf("load config: %w", err))
+		log.Fatalf("failed to load config: %v", err)
 	}
 
-	log, err := config.NewLogger(cfg)
-	if err != nil {
-		panic(fmt.Errorf("init logger: %w", err))
-	}
-	defer log.Sync()
+	// 2. Init App
+	app := fiber.New()
 
-	db, err := config.NewGormDB(cfg, log)
-	if err != nil {
-		log.Fatal("failed to connect database", config.Err(err))
-	}
-	defer config.CloseGormDB(db)
-
-	redisClient, err := config.NewRedisClient(cfg)
-	if err != nil {
-		log.Fatal("failed to connect redis", config.Err(err))
-	}
-	defer config.CloseRedisClient(redisClient)
-
-	if err := config.AutoMigrate(db); err != nil {
-		log.Fatal("failed to auto migrate models", config.Err(err))
-	}
-
-	healthRepo := health.NewHealthRepository(cfg.App.Name)
-	healthService := health.NewHealthService(healthRepo)
+	// 3. Init Modules
+	healthService := health.NewHealthService(cfg.App.Name)
 	healthController := health.NewHealthController(healthService)
 
-	userRepo := repository.NewUserRepository(db)
-	authSessionRepo := repository.NewRedisAuthSessionRepository(redisClient, cfg.Redis.KeyPrefix)
-	otpRepo := repository.NewOTPRepository(db)
-	rateLimitRepo := repository.NewRedisRateLimitRepository(redisClient, cfg.Redis.KeyPrefix)
-	authService := services.NewAuthService(services.AuthSettings{
-		JWTSecret:       cfg.Auth.JWTSecret,
-		AccessTokenTTL:  cfg.Auth.AccessTokenTTL,
-		RefreshTokenTTL: cfg.Auth.RefreshTokenTTL,
-		BcryptCost:      cfg.Auth.BcryptCost,
-		RateLimitPerMin: cfg.Auth.RateLimitPerMin,
-		OTPTTL:          cfg.Auth.OTPTTL,
-		OTPMaxAttempts:  cfg.Auth.OTPMaxAttempts,
-		DebugExposeOTP:  cfg.Auth.DebugExposeOTP,
-	}, userRepo, authSessionRepo, otpRepo, rateLimitRepo)
-	authController := controller.NewAuthController(authService)
-
-	validate := config.NewValidator()
-	app, err := server.New(cfg, log, validate, server.Dependencies{
+	// 4. Register Routes
+	server.RegisterRoutes(app, server.Dependencies{
 		HealthController: healthController,
-		AuthController:   authController,
 	})
-	if err != nil {
-		log.Fatal("failed to initialize server", config.Err(err))
-	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	if err := server.Run(ctx, app, cfg, log); err != nil {
-		log.Fatal("server exited with error", config.Err(err))
+	// 5. Start server
+	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
+	fmt.Printf("Server starting on %s\n", addr)
+	if err := app.Listen(addr); err != nil {
+		log.Fatalf("server exited: %v", err)
 	}
 }
