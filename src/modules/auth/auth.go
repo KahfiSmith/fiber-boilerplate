@@ -3,6 +3,9 @@ package auth
 import (
 	"time"
 	"fiber-boilerplate/src/common/response"
+	"fiber-boilerplate/src/common/validator"
+	"fiber-boilerplate/src/common/exceptions"
+	"fiber-boilerplate/src/common/database"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -38,13 +41,14 @@ func NewAuthController(service *AuthService) *AuthController {
 
 func (c *AuthController) Login(ctx fiber.Ctx) error {
 	var req AuthRequest
-	// if err := ctx.Bind().JSON(&req); err != nil {
-	// 	return response.Error(ctx, fiber.StatusBadRequest, "Invalid request", err.Error())
-	// }
+	
+	if err := validator.ParseAndValidate(ctx, &req); err != nil {
+		return response.HandleError(ctx, err)
+	}
 
 	res, err := c.service.Login(req)
 	if err != nil {
-		return response.Error(ctx, fiber.StatusUnauthorized, "Login failed", err.Error())
+		return response.HandleError(ctx, err)
 	}
 
 	return response.Success(ctx, fiber.StatusOK, res)
@@ -52,25 +56,45 @@ func (c *AuthController) Login(ctx fiber.Ctx) error {
 
 // --- Service ---
 type AuthService struct {
-	// repo *AuthRepository
+	repo *AuthRepository
 }
 
-func NewAuthService() *AuthService {
-	return &AuthService{}
+func NewAuthService(repo *AuthRepository) *AuthService {
+	return &AuthService{repo: repo}
 }
 
 func (s *AuthService) Login(req AuthRequest) (AuthResponse, error) {
-	// Dummy logic
+	user, err := s.repo.FindByEmail(req.Email)
+	if err != nil {
+		return AuthResponse{}, exceptions.Unauthorized("Invalid credentials")
+	}
+
+	// Logic to compare password hash should go here
+	// Logic to generate JWT should go here
+
 	return AuthResponse{
-		AccessToken:  "dummy_access",
-		RefreshToken: "dummy_refresh",
-		User: User{
-			ID:    1,
-			Name:  "Test",
-			Email: req.Email,
-		},
+		AccessToken:  "jwt_access_token",
+		RefreshToken: "jwt_refresh_token",
+		User:         *user,
 	}, nil
 }
+
+// --- Repository ---
+type AuthRepository struct{}
+
+func NewAuthRepository() *AuthRepository {
+	return &AuthRepository{}
+}
+
+func (r *AuthRepository) FindByEmail(email string) (*User, error) {
+	var user User
+	// Using global DB instance from common/database
+	if err := database.DB.Where("email = ?", email).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 
 // --- Module Routes ---
 func RegisterRoutes(router fiber.Router, controller *AuthController) {

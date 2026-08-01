@@ -1,6 +1,8 @@
 package response
 
 import (
+	"errors"
+	"fiber-boilerplate/src/common/exceptions"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -18,10 +20,21 @@ func Success(c fiber.Ctx, statusCode int, data any) error {
 	})
 }
 
-func Error(c fiber.Ctx, statusCode int, message string, err any) error {
-	return c.Status(statusCode).JSON(APIResponse{
+// HandleError gracefully handles standard errors and custom HttpErrors
+func HandleError(c fiber.Ctx, err error) error {
+	var httpErr *exceptions.HttpError
+	
+	if errors.As(err, &httpErr) {
+		return c.Status(httpErr.Code).JSON(APIResponse{
+			Success: false,
+			Message: httpErr.Message,
+		})
+	}
+
+	// Fallback for unhandled/native errors
+	return c.Status(fiber.StatusInternalServerError).JSON(APIResponse{
 		Success: false,
-		Message: message,
-		Error:   err,
+		Message: "Internal server error",
+		Error:   err.Error(), // Note: In production, hide actual error strings
 	})
 }

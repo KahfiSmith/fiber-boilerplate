@@ -5,6 +5,7 @@ import (
 	"log"
 	
 	"fiber-boilerplate/src/common/config"
+	"fiber-boilerplate/src/common/database"
 	"fiber-boilerplate/src/common/server"
 	"fiber-boilerplate/src/modules/health"
 	"fiber-boilerplate/src/modules/auth"
@@ -19,23 +20,28 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	// 2. Init App
+	// 2. Init Infrastructure (DB, Redis, Logger)
+	database.Connect(cfg.DB)
+	database.DB.AutoMigrate(&auth.User{}) // Simple auto-migrate
+
+	// 3. Init App
 	app := fiber.New()
 
-	// 3. Init Modules
+	// 4. Init Modules (Manual DI)
 	healthService := health.NewHealthService(cfg.App.Name)
 	healthController := health.NewHealthController(healthService)
 
-	authService := auth.NewAuthService()
+	authRepo := auth.NewAuthRepository()
+	authService := auth.NewAuthService(authRepo)
 	authController := auth.NewAuthController(authService)
 
-	// 4. Register Routes
+	// 5. Register Routes
 	server.RegisterRoutes(app, server.Dependencies{
 		HealthController: healthController,
 		AuthController:   authController,
 	})
 
-	// 5. Start server
+	// 6. Start server
 	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
 	fmt.Printf("Server starting on %s\n", addr)
 	if err := app.Listen(addr); err != nil {
