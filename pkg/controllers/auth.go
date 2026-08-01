@@ -5,7 +5,7 @@ import (
 	"fiber-boilerplate/pkg/dto/request"
 	"fiber-boilerplate/pkg/entities"
 	"fiber-boilerplate/pkg/services"
-	"fiber-boilerplate/pkg/utils"
+	"fiber-boilerplate/internal/pkg/response"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -33,29 +33,29 @@ func NewAuthController(authService services.AuthService) *AuthController {
 // @Router /auth/register [post]
 func (a *AuthController) Register(c fiber.Ctx) error {
 	var req request.RegisterRequest
-	if err := parseAndValidate(c, &req); err != nil {
-		return utils.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
+	if err := response.ParseAndValidate(c, &req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
 	}
 
 	result, err := a.authService.Register(c.Context(), entities.RegisterInput{
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: req.Password,
-	}, requestMeta(c))
+	}, response.RequestMeta(c))
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidInput):
-			return utils.Error(c, fiber.StatusBadRequest, "invalid input", nil)
+			return response.Error(c, fiber.StatusBadRequest, "invalid input", nil)
 		case errors.Is(err, services.ErrEmailAlreadyUsed):
-			return utils.Error(c, fiber.StatusConflict, "email already registered", nil)
+			return response.Error(c, fiber.StatusConflict, "email already registered", nil)
 		case errors.Is(err, services.ErrRateLimited):
-			return utils.Error(c, fiber.StatusTooManyRequests, "too many requests", nil)
+			return response.Error(c, fiber.StatusTooManyRequests, "too many requests", nil)
 		default:
-			return utils.Error(c, fiber.StatusInternalServerError, "register failed", err.Error())
+			return response.Error(c, fiber.StatusInternalServerError, "register failed", err.Error())
 		}
 	}
 
-	return utils.Success(c, fiber.StatusCreated, authTokenResponse(result))
+	return response.Success(c, fiber.StatusCreated, authTokenResponse(result))
 }
 
 // Login godoc
@@ -73,28 +73,28 @@ func (a *AuthController) Register(c fiber.Ctx) error {
 // @Router /auth/login [post]
 func (a *AuthController) Login(c fiber.Ctx) error {
 	var req request.LoginRequest
-	if err := parseAndValidate(c, &req); err != nil {
-		return utils.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
+	if err := response.ParseAndValidate(c, &req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
 	}
 
 	result, err := a.authService.Login(c.Context(), entities.LoginInput{
 		Email:    req.Email,
 		Password: req.Password,
-	}, requestMeta(c))
+	}, response.RequestMeta(c))
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidInput):
-			return utils.Error(c, fiber.StatusBadRequest, "invalid input", nil)
+			return response.Error(c, fiber.StatusBadRequest, "invalid input", nil)
 		case errors.Is(err, services.ErrInvalidCredentials):
-			return utils.Error(c, fiber.StatusUnauthorized, "invalid credentials", nil)
+			return response.Error(c, fiber.StatusUnauthorized, "invalid credentials", nil)
 		case errors.Is(err, services.ErrRateLimited):
-			return utils.Error(c, fiber.StatusTooManyRequests, "too many requests", nil)
+			return response.Error(c, fiber.StatusTooManyRequests, "too many requests", nil)
 		default:
-			return utils.Error(c, fiber.StatusInternalServerError, "login failed", err.Error())
+			return response.Error(c, fiber.StatusInternalServerError, "login failed", err.Error())
 		}
 	}
 
-	return utils.Success(c, fiber.StatusOK, otpChallengeResponse(result))
+	return response.Success(c, fiber.StatusOK, otpChallengeResponse(result))
 }
 
 // ForgotPassword godoc
@@ -111,25 +111,25 @@ func (a *AuthController) Login(c fiber.Ctx) error {
 // @Router /auth/forgot-password [post]
 func (a *AuthController) ForgotPassword(c fiber.Ctx) error {
 	var req request.ForgotPasswordRequest
-	if err := parseAndValidate(c, &req); err != nil {
-		return utils.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
+	if err := response.ParseAndValidate(c, &req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
 	}
 
 	result, err := a.authService.ForgotPassword(c.Context(), entities.ForgotPasswordInput{
 		Email: req.Email,
-	}, requestMeta(c))
+	}, response.RequestMeta(c))
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidInput):
-			return utils.Error(c, fiber.StatusBadRequest, "invalid input", nil)
+			return response.Error(c, fiber.StatusBadRequest, "invalid input", nil)
 		case errors.Is(err, services.ErrRateLimited):
-			return utils.Error(c, fiber.StatusTooManyRequests, "too many requests", nil)
+			return response.Error(c, fiber.StatusTooManyRequests, "too many requests", nil)
 		default:
-			return utils.Error(c, fiber.StatusInternalServerError, "forgot password failed", err.Error())
+			return response.Error(c, fiber.StatusInternalServerError, "forgot password failed", err.Error())
 		}
 	}
 
-	return utils.Success(c, fiber.StatusOK, otpChallengeResponse(result))
+	return response.Success(c, fiber.StatusOK, otpChallengeResponse(result))
 }
 
 // VerifyOTP godoc
@@ -147,32 +147,32 @@ func (a *AuthController) ForgotPassword(c fiber.Ctx) error {
 // @Router /auth/otp/verify [post]
 func (a *AuthController) VerifyOTP(c fiber.Ctx) error {
 	var req request.VerifyOTPRequest
-	if err := parseAndValidate(c, &req); err != nil {
-		return utils.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
+	if err := response.ParseAndValidate(c, &req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
 	}
 
 	result, err := a.authService.VerifyOTP(c.Context(), entities.VerifyOTPInput{
 		ChallengeID: req.ChallengeID,
 		OTP:         req.OTP,
-	}, requestMeta(c))
+	}, response.RequestMeta(c))
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidInput):
-			return utils.Error(c, fiber.StatusBadRequest, "invalid input", nil)
+			return response.Error(c, fiber.StatusBadRequest, "invalid input", nil)
 		case errors.Is(err, services.ErrInvalidOTP):
-			return utils.Error(c, fiber.StatusUnauthorized, "invalid otp", nil)
+			return response.Error(c, fiber.StatusUnauthorized, "invalid otp", nil)
 		case errors.Is(err, services.ErrOTPExpired):
-			return utils.Error(c, fiber.StatusUnauthorized, "otp expired", nil)
+			return response.Error(c, fiber.StatusUnauthorized, "otp expired", nil)
 		case errors.Is(err, services.ErrOTPAttemptsExceeded):
-			return utils.Error(c, fiber.StatusTooManyRequests, "otp attempts exceeded", nil)
+			return response.Error(c, fiber.StatusTooManyRequests, "otp attempts exceeded", nil)
 		case errors.Is(err, services.ErrRateLimited):
-			return utils.Error(c, fiber.StatusTooManyRequests, "too many requests", nil)
+			return response.Error(c, fiber.StatusTooManyRequests, "too many requests", nil)
 		default:
-			return utils.Error(c, fiber.StatusInternalServerError, "verify otp failed", err.Error())
+			return response.Error(c, fiber.StatusInternalServerError, "verify otp failed", err.Error())
 		}
 	}
 
-	return utils.Success(c, fiber.StatusOK, authTokenResponse(result))
+	return response.Success(c, fiber.StatusOK, authTokenResponse(result))
 }
 
 // ResetPassword godoc
@@ -190,33 +190,33 @@ func (a *AuthController) VerifyOTP(c fiber.Ctx) error {
 // @Router /auth/reset-password [post]
 func (a *AuthController) ResetPassword(c fiber.Ctx) error {
 	var req request.ResetPasswordRequest
-	if err := parseAndValidate(c, &req); err != nil {
-		return utils.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
+	if err := response.ParseAndValidate(c, &req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
 	}
 
 	err := a.authService.ResetPassword(c.Context(), entities.ResetPasswordInput{
 		ChallengeID: req.ChallengeID,
 		OTP:         req.OTP,
 		NewPassword: req.NewPassword,
-	}, requestMeta(c))
+	}, response.RequestMeta(c))
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidInput):
-			return utils.Error(c, fiber.StatusBadRequest, "invalid input", nil)
+			return response.Error(c, fiber.StatusBadRequest, "invalid input", nil)
 		case errors.Is(err, services.ErrInvalidOTP):
-			return utils.Error(c, fiber.StatusUnauthorized, "invalid otp", nil)
+			return response.Error(c, fiber.StatusUnauthorized, "invalid otp", nil)
 		case errors.Is(err, services.ErrOTPExpired):
-			return utils.Error(c, fiber.StatusUnauthorized, "otp expired", nil)
+			return response.Error(c, fiber.StatusUnauthorized, "otp expired", nil)
 		case errors.Is(err, services.ErrOTPAttemptsExceeded):
-			return utils.Error(c, fiber.StatusTooManyRequests, "otp attempts exceeded", nil)
+			return response.Error(c, fiber.StatusTooManyRequests, "otp attempts exceeded", nil)
 		case errors.Is(err, services.ErrRateLimited):
-			return utils.Error(c, fiber.StatusTooManyRequests, "too many requests", nil)
+			return response.Error(c, fiber.StatusTooManyRequests, "too many requests", nil)
 		default:
-			return utils.Error(c, fiber.StatusInternalServerError, "reset password failed", err.Error())
+			return response.Error(c, fiber.StatusInternalServerError, "reset password failed", err.Error())
 		}
 	}
 
-	return utils.Success(c, fiber.StatusOK, map[string]any{
+	return response.Success(c, fiber.StatusOK, map[string]any{
 		"message": "password reset success",
 	})
 }
@@ -235,19 +235,19 @@ func (a *AuthController) ResetPassword(c fiber.Ctx) error {
 // @Router /auth/refresh [post]
 func (a *AuthController) Refresh(c fiber.Ctx) error {
 	var req request.RefreshTokenRequest
-	if err := parseAndValidate(c, &req); err != nil {
-		return utils.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
+	if err := response.ParseAndValidate(c, &req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
 	}
 
-	result, err := a.authService.Refresh(c.Context(), req.RefreshToken, requestMeta(c))
+	result, err := a.authService.Refresh(c.Context(), req.RefreshToken, response.RequestMeta(c))
 	if err != nil {
 		if errors.Is(err, services.ErrInvalidRefreshToken) {
-			return utils.Error(c, fiber.StatusUnauthorized, "invalid refresh token", nil)
+			return response.Error(c, fiber.StatusUnauthorized, "invalid refresh token", nil)
 		}
-		return utils.Error(c, fiber.StatusInternalServerError, "refresh failed", err.Error())
+		return response.Error(c, fiber.StatusInternalServerError, "refresh failed", err.Error())
 	}
 
-	return utils.Success(c, fiber.StatusOK, authTokenResponse(result))
+	return response.Success(c, fiber.StatusOK, authTokenResponse(result))
 }
 
 // Logout godoc
@@ -264,18 +264,18 @@ func (a *AuthController) Refresh(c fiber.Ctx) error {
 // @Router /auth/logout [post]
 func (a *AuthController) Logout(c fiber.Ctx) error {
 	var req request.LogoutRequest
-	if err := parseAndValidate(c, &req); err != nil {
-		return utils.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
+	if err := response.ParseAndValidate(c, &req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
 	}
 
 	if err := a.authService.Logout(c.Context(), req.RefreshToken); err != nil {
 		if errors.Is(err, services.ErrInvalidRefreshToken) {
-			return utils.Error(c, fiber.StatusUnauthorized, "invalid refresh token", nil)
+			return response.Error(c, fiber.StatusUnauthorized, "invalid refresh token", nil)
 		}
-		return utils.Error(c, fiber.StatusInternalServerError, "logout failed", err.Error())
+		return response.Error(c, fiber.StatusInternalServerError, "logout failed", err.Error())
 	}
 
-	return utils.Success(c, fiber.StatusOK, map[string]any{
+	return response.Success(c, fiber.StatusOK, map[string]any{
 		"message": "logout success",
 	})
 }
@@ -291,20 +291,20 @@ func (a *AuthController) Logout(c fiber.Ctx) error {
 // @Failure 500 {object} response.APIResponse{error=string}
 // @Router /auth/me [get]
 func (a *AuthController) Me(c fiber.Ctx) error {
-	accessToken, err := accessTokenFromRequest(c)
+	accessToken, err := response.AccessTokenFromRequest(c)
 	if err != nil {
-		return utils.Error(c, fiber.StatusUnauthorized, "missing or invalid authorization header", nil)
+		return response.Error(c, fiber.StatusUnauthorized, "missing or invalid authorization header", nil)
 	}
 
 	user, err := a.authService.Me(c.Context(), accessToken)
 	if err != nil {
 		if errors.Is(err, services.ErrInvalidAccessToken) {
-			return utils.Error(c, fiber.StatusUnauthorized, "invalid access token", nil)
+			return response.Error(c, fiber.StatusUnauthorized, "invalid access token", nil)
 		}
-		return utils.Error(c, fiber.StatusInternalServerError, "fetch profile failed", err.Error())
+		return response.Error(c, fiber.StatusInternalServerError, "fetch profile failed", err.Error())
 	}
 
-	return utils.Success(c, fiber.StatusOK, authUserResponse(user))
+	return response.Success(c, fiber.StatusOK, authUserResponse(user))
 }
 
 // Sessions godoc
@@ -318,20 +318,20 @@ func (a *AuthController) Me(c fiber.Ctx) error {
 // @Failure 500 {object} response.APIResponse{error=string}
 // @Router /auth/sessions [get]
 func (a *AuthController) Sessions(c fiber.Ctx) error {
-	accessToken, err := accessTokenFromRequest(c)
+	accessToken, err := response.AccessTokenFromRequest(c)
 	if err != nil {
-		return utils.Error(c, fiber.StatusUnauthorized, "missing or invalid authorization header", nil)
+		return response.Error(c, fiber.StatusUnauthorized, "missing or invalid authorization header", nil)
 	}
 
 	sessions, err := a.authService.ListSessions(c.Context(), accessToken)
 	if err != nil {
 		if errors.Is(err, services.ErrInvalidAccessToken) {
-			return utils.Error(c, fiber.StatusUnauthorized, "invalid access token", nil)
+			return response.Error(c, fiber.StatusUnauthorized, "invalid access token", nil)
 		}
-		return utils.Error(c, fiber.StatusInternalServerError, "list sessions failed", err.Error())
+		return response.Error(c, fiber.StatusInternalServerError, "list sessions failed", err.Error())
 	}
 
-	return utils.Success(c, fiber.StatusOK, authSessionResponses(sessions))
+	return response.Success(c, fiber.StatusOK, authSessionResponses(sessions))
 }
 
 // RevokeSession godoc
@@ -349,30 +349,30 @@ func (a *AuthController) Sessions(c fiber.Ctx) error {
 // @Failure 500 {object} response.APIResponse{error=string}
 // @Router /auth/sessions/revoke [post]
 func (a *AuthController) RevokeSession(c fiber.Ctx) error {
-	accessToken, err := accessTokenFromRequest(c)
+	accessToken, err := response.AccessTokenFromRequest(c)
 	if err != nil {
-		return utils.Error(c, fiber.StatusUnauthorized, "missing or invalid authorization header", nil)
+		return response.Error(c, fiber.StatusUnauthorized, "missing or invalid authorization header", nil)
 	}
 
 	var req request.RevokeSessionRequest
-	if err := parseAndValidate(c, &req); err != nil {
-		return utils.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
+	if err := response.ParseAndValidate(c, &req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "invalid request body", err.Error())
 	}
 
 	if err := a.authService.RevokeSession(c.Context(), accessToken, req.SessionID); err != nil {
 		switch {
 		case errors.Is(err, services.ErrInvalidAccessToken):
-			return utils.Error(c, fiber.StatusUnauthorized, "invalid access token", nil)
+			return response.Error(c, fiber.StatusUnauthorized, "invalid access token", nil)
 		case errors.Is(err, services.ErrInvalidInput):
-			return utils.Error(c, fiber.StatusBadRequest, "invalid session id", nil)
+			return response.Error(c, fiber.StatusBadRequest, "invalid session id", nil)
 		case errors.Is(err, services.ErrSessionNotFound):
-			return utils.Error(c, fiber.StatusNotFound, "session not found", nil)
+			return response.Error(c, fiber.StatusNotFound, "session not found", nil)
 		default:
-			return utils.Error(c, fiber.StatusInternalServerError, "revoke session failed", err.Error())
+			return response.Error(c, fiber.StatusInternalServerError, "revoke session failed", err.Error())
 		}
 	}
 
-	return utils.Success(c, fiber.StatusOK, map[string]any{
+	return response.Success(c, fiber.StatusOK, map[string]any{
 		"message": "session revoked",
 	})
 }
@@ -388,19 +388,19 @@ func (a *AuthController) RevokeSession(c fiber.Ctx) error {
 // @Failure 500 {object} response.APIResponse{error=string}
 // @Router /auth/sessions/revoke-all [post]
 func (a *AuthController) RevokeAllSessions(c fiber.Ctx) error {
-	accessToken, err := accessTokenFromRequest(c)
+	accessToken, err := response.AccessTokenFromRequest(c)
 	if err != nil {
-		return utils.Error(c, fiber.StatusUnauthorized, "missing or invalid authorization header", nil)
+		return response.Error(c, fiber.StatusUnauthorized, "missing or invalid authorization header", nil)
 	}
 
 	if err := a.authService.RevokeAllSessions(c.Context(), accessToken); err != nil {
 		if errors.Is(err, services.ErrInvalidAccessToken) {
-			return utils.Error(c, fiber.StatusUnauthorized, "invalid access token", nil)
+			return response.Error(c, fiber.StatusUnauthorized, "invalid access token", nil)
 		}
-		return utils.Error(c, fiber.StatusInternalServerError, "revoke all sessions failed", err.Error())
+		return response.Error(c, fiber.StatusInternalServerError, "revoke all sessions failed", err.Error())
 	}
 
-	return utils.Success(c, fiber.StatusOK, map[string]any{
+	return response.Success(c, fiber.StatusOK, map[string]any{
 		"message": "all sessions revoked",
 	})
 }

@@ -1,10 +1,11 @@
 package controllers
 
 import (
-	"fiber-boilerplate/pkg/dto/response"
+	
 	"fiber-boilerplate/pkg/entities"
 	"fiber-boilerplate/pkg/services"
-	"fiber-boilerplate/pkg/utils"
+	dtoResponse "fiber-boilerplate/pkg/dto/response"
+	"fiber-boilerplate/internal/pkg/response"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -24,14 +25,14 @@ func NewHealthController(healthService services.HealthService) *HealthController
 // @Description Returns service health information.
 // @Tags Health
 // @Produce json
-// @Success 200 {object} response.APIResponse{data=response.HealthStatusResponse}
+// @Success 200 {object} response.APIResponse{data=dtoResponse.HealthStatusResponse}
 // @Router /health [get]
 func (h *HealthController) Health(c fiber.Ctx) error {
-	return utils.Success(c, fiber.StatusOK, healthStatusResponse(h.healthService.GetStatus()))
+	return response.Success(c, fiber.StatusOK, healthStatusResponse(h.healthService.GetStatus()))
 }
 
-func healthStatusResponse(status entities.HealthStatus) response.HealthStatusResponse {
-	return response.HealthStatusResponse{
+func healthStatusResponse(status entities.HealthStatus) dtoResponse.HealthStatusResponse {
+	return dtoResponse.HealthStatusResponse{
 		Status:    status.Status,
 		Message:   status.Message,
 		Service:   status.Service,

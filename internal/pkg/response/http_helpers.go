@@ -1,4 +1,4 @@
-package controllers
+package response
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func parseAndValidate(c fiber.Ctx, payload any) error {
+func ParseAndValidate(c fiber.Ctx, payload any) error {
 	body := c.Body()
 	if len(body) == 0 {
 		return errors.New("request body is empty")
@@ -48,14 +48,14 @@ func validateRequestPayload(c fiber.Ctx, payload any) error {
 	return nil
 }
 
-func requestMeta(c fiber.Ctx) entities.AuthClientMeta {
+func RequestMeta(c fiber.Ctx) entities.AuthClientMeta {
 	return entities.AuthClientMeta{
 		IPAddress: c.IP(),
 		UserAgent: c.Get("User-Agent"),
 	}
 }
 
-func accessTokenFromRequest(c fiber.Ctx) (string, error) {
+func AccessTokenFromRequest(c fiber.Ctx) (string, error) {
 	return bearerToken(c.Get("Authorization"))
 }
 

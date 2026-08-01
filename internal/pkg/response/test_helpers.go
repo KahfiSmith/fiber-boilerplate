@@ -1,4 +1,4 @@
-package controllers
+package response
 
 import (
 	"io"
@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func readBody(t *testing.T, resp *http.Response) string {
+func ReadBody(t *testing.T, resp *http.Response) string {
 	t.Helper()
 
 	body, err := io.ReadAll(resp.Body)

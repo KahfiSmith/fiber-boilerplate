@@ -1,4 +1,4 @@
-package controllers
+package response
 
 import (
 	"net/http/httptest"
@@ -115,7 +115,7 @@ func TestParseAndValidate(t *testing.T) {
 
 			app.Post("/", func(c fiber.Ctx) error {
 				var payload request.RegisterRequest
-				err := parseAndValidate(c, &payload)
+				err := ParseAndValidate(c, &payload)
 				if err != nil {
 					if strings.Contains(err.Error(), "validator is not available") {
 						return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
@@ -136,7 +136,7 @@ func TestParseAndValidate(t *testing.T) {
 				return
 			}
 
-			body := readBody(t, resp)
+			body := ReadBody(t, resp)
 			assert.Contains(t, body, testCase.expectedMessage)
 		})
 	}

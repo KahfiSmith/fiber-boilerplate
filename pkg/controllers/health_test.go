@@ -7,6 +7,7 @@ import (
 	"fiber-boilerplate/pkg/entities"
 	"fiber-boilerplate/pkg/services"
 
+	"fiber-boilerplate/internal/pkg/response"
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,7 +42,7 @@ func TestHealthControllerHealth(t *testing.T) {
 	resp, err := app.Test(req)
 	require.NoError(t, err)
 
-	body := readBody(t, resp)
+	body := response.ReadBody(t, resp)
 	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
 	assert.Contains(t, body, `"success":true`)
 	assert.Contains(t, body, `"service":"fiber-boilerplate"`)
