@@ -17,7 +17,7 @@ import (
 	config "fiber-boilerplate/internal/core/configs"
 	controller "fiber-boilerplate/pkg/controllers"
 	repository "fiber-boilerplate/pkg/repositories"
-	"fiber-boilerplate/pkg/server"
+	"fiber-boilerplate/internal/core/server"
 	"fiber-boilerplate/pkg/services"
 )
 

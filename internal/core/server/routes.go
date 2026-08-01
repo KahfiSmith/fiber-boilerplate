@@ -1,8 +1,8 @@
 package server
 
 import (
-	"fiber-boilerplate/pkg/server/observability"
-	serverRoutes "fiber-boilerplate/pkg/server/routes"
+	"fiber-boilerplate/internal/core/server/observability"
+	serverRoutes "fiber-boilerplate/internal/core/server/routes"
 
 	"github.com/gofiber/fiber/v3"
 )

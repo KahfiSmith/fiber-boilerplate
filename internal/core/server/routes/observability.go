@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"fiber-boilerplate/pkg/server/observability"
+	"fiber-boilerplate/internal/core/server/observability"
 
 	"github.com/gofiber/fiber/v3"
 	pprofmw "github.com/gofiber/fiber/v3/middleware/pprof"

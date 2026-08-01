@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"fiber-boilerplate/pkg/server/observability"
+	"fiber-boilerplate/internal/core/server/observability"
 
 	"github.com/gofiber/fiber/v3"
 )

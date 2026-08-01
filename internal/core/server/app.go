@@ -7,7 +7,7 @@ import (
 	controller "fiber-boilerplate/pkg/controllers"
 	config "fiber-boilerplate/internal/core/configs"
 	serverMiddleware "fiber-boilerplate/pkg/server/middleware"
-	"fiber-boilerplate/pkg/server/observability"
+	"fiber-boilerplate/internal/core/server/observability"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/go-playground/validator/v10"
