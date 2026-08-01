@@ -11,56 +11,38 @@ Current backend architecture and dependency direction.
   - `Dockerfile`
   - `docker-compose.yml`
   - optional container env reference: `.env.docker.example`
-- `pkg/configs`
+- `internal/core/configs`
   - third-party library setup (`viper`, `zap`, `gorm`, `redis`, `fiber`, `validator`)
   - config schema and validation
-- `pkg/server`
-  - app wiring, middleware, route registration, runtime start/shutdown
-- `pkg/controllers`
-  - HTTP handlers only
-  - request parsing, request validation, auth-header extraction, and response presentation helpers
-- `pkg/server/middleware`
+- `internal/core/server`
+  - app wiring, route registration, runtime start/shutdown
+- `internal/pkg/middleware`
   - server/transport middleware helpers
-- `pkg/dto/request`
-  - HTTP request contracts
-- `pkg/dto/response`
-  - HTTP response contracts, including the shared API envelope
-- `pkg/entities`
-  - domain/business objects
-- `pkg/mappers`
-  - transformations between `models` and `entities`
-- `pkg/services`
+- `internal/pkg/response`
+  - shared helper functions (response formatting, HTTP parsing)
+- `internal/domain/*` (e.g. `health`)
+  - fully encapsulated domain logic (Module-Driven / Package-Oriented)
+  - contains its own Controller, Service, Repository, DTOs, and Entity
+- `pkg/controllers` (Legacy / Layer-Driven)
+  - HTTP handlers for features not yet refactored to `internal/domain`
+- `pkg/services` (Legacy / Layer-Driven)
   - business logic
-  - should operate on `entities`, not persistence models
-- `pkg/repositories`
+- `pkg/repositories` (Legacy / Layer-Driven)
   - data source abstraction
-  - responsible for translating `entities <-> models` and persisting `models`
-  - keep repository contracts in `*_repository.go`
-  - keep storage-specific implementations in files like `*_gorm_repository.go` and `*_redis_repository.go`
-- `pkg/models`
-  - persistence-only models (GORM/database-facing structs)
-- `pkg/utils`
-  - shared helper functions (response formatting)
+- `pkg/entities`, `pkg/models`, `pkg/mappers`, `pkg/dto` (Legacy / Layer-Driven)
+  - data models and transformations for `pkg/` layers
 
 ## Dependency Rules
-- `cmd` may depend on all `pkg/*`.
-- `server` should focus on HTTP wiring and receive controllers via injected dependencies.
-- `controllers` depend on services, utils, and DTOs.
-- `controllers` translate `request DTO -> entity` before service calls and `entity -> response DTO` before returning.
-- `server/middleware` depends on HTTP/framework concerns only.
-- `services` depend on repositories and entities; they should not return persistence models.
-- `services` may validate session-backed auth state through repository contracts; token parsing stays in service code, storage lookups stay in repositories.
-- `repositories` should not depend on controller/server and should translate `models <-> entities` through `pkg/mappers`.
-- `dto` should not contain business logic.
-- `configs` should not depend on business/domain code.
-
-## Route Ownership
-- Route registration entrypoint stays in `pkg/server/routes.go`.
-- Route group modules may be split under `pkg/server/routes/` (e.g. `health.go`, `auth.go`) and called by the entrypoint.
-- Endpoint handlers are implemented in `pkg/controllers`.
+- `cmd` may depend on `internal/*` and `pkg/*`.
+- `internal/core/server` should focus on HTTP wiring and receive controllers via injected dependencies.
+- `internal/domain/*` components should not depend on `pkg/controllers` or `pkg/services` from other domains (isolate by domain).
+- `pkg/controllers` depend on services, utils, and DTOs.
+- `pkg/controllers` translate `request DTO -> entity` before service calls and `entity -> response DTO` before returning.
+- `pkg/services` depend on repositories and entities; they should not return persistence models.
+- `pkg/repositories` should not depend on controller/server and should translate `models <-> entities` through `pkg/mappers`.
 
 ## Configuration Ownership
-- All library bootstrap stays in `pkg/configs`:
+- All library bootstrap stays in `internal/core/configs`:
   - `config.go`
   - `db.go`
   - `auth.go`
@@ -69,7 +51,6 @@ Current backend architecture and dependency direction.
   - `redis.go`
   - `zap.go`
   - `validator.go`
-- `pkg/configs` should initialize the validator, but request-body validation helpers belong in the transport/controller layer.
 
 ## Runtime Notes
 - The app currently requires both PostgreSQL and Redis at startup.
