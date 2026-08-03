@@ -24,7 +24,7 @@ func RateLimiter(maxRequests int, window time.Duration) fiber.Handler {
 
 		count, err := redis.Client.Incr(ctx, key).Result()
 		if err != nil {
-			return c.Next() 
+			return c.Next()
 		}
 
 		if count == 1 {
