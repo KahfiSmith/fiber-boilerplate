@@ -13,7 +13,7 @@ var DB *gorm.DB
 
 func Connect(cfg config.DBConfig) {
 	var err error
-	
+
 	DB, err = gorm.Open(postgres.Open(cfg.DSN()), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 	})

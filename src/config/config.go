@@ -57,23 +57,30 @@ type RedisConfig struct {
 }
 
 type AuthConfig struct {
-	JWTSecret       string        `mapstructure:"jwt_secret" validate:"required,min=32"`
-	AccessTokenTTL  time.Duration `mapstructure:"access_token_ttl" validate:"required,min=1m"`
-	RefreshTokenTTL time.Duration `mapstructure:"refresh_token_ttl" validate:"required,min=24h"`
-	BcryptCost      int           `mapstructure:"bcrypt_cost" validate:"required,min=10,max=14"`
-	RateLimitPerMin int           `mapstructure:"rate_limit_per_min" validate:"required,min=1"`
-	OTPTTL          time.Duration `mapstructure:"otp_ttl" validate:"required,min=1m"`
-	OTPMaxAttempts  int           `mapstructure:"otp_max_attempts" validate:"required,min=1"`
-	DebugExposeOTP  bool          `mapstructure:"debug_expose_otp"`
+	JWTAccessSecret     string        `mapstructure:"jwt_access_secret" validate:"required,min=32"`
+	JWTIssuer           string        `mapstructure:"jwt_issuer" validate:"required"`
+	JWTAudience         string        `mapstructure:"jwt_audience" validate:"required"`
+	AccessTokenTTL      time.Duration `mapstructure:"access_token_ttl" validate:"required,min=1m"`
+	RefreshTokenHMACKey string        `mapstructure:"refresh_token_hmac_key" validate:"required,min=32"`
+	RefreshTokenTTL     time.Duration `mapstructure:"refresh_token_ttl" validate:"required,min=24h"`
+	FrontendOrigin      string        `mapstructure:"frontend_origin" validate:"required"`
+	CookieName          string        `mapstructure:"cookie_name" validate:"required"`
+	CookiePath          string        `mapstructure:"cookie_path" validate:"required"`
+	CookieSecure        bool          `mapstructure:"cookie_secure"`
+	CookieSameSite      string        `mapstructure:"cookie_same_site" validate:"required"`
+	CookieDomain        string        `mapstructure:"cookie_domain"`
+	BcryptCost          int           `mapstructure:"bcrypt_cost" validate:"required,min=10,max=14"`
+	RateLimitPerMin     int           `mapstructure:"rate_limit_per_min" validate:"required,min=1"`
+	DebugExposeOTP      bool          `mapstructure:"debug_expose_otp"`
 }
 
 type FiberConfig struct {
-	ReadTimeout  time.Duration `mapstructure:"read_timeout" validate:"required,min=1s"`
-	WriteTimeout time.Duration `mapstructure:"write_timeout" validate:"required,min=1s"`
-	IdleTimeout  time.Duration `mapstructure:"idle_timeout" validate:"required,min=1s"`
-	BodyLimit    int           `mapstructure:"body_limit" validate:"required,min=1"`
-	EnableMetrics bool         `mapstructure:"enable_metrics"`
-	EnablePprof   bool         `mapstructure:"enable_pprof"`
+	ReadTimeout   time.Duration `mapstructure:"read_timeout" validate:"required,min=1s"`
+	WriteTimeout  time.Duration `mapstructure:"write_timeout" validate:"required,min=1s"`
+	IdleTimeout   time.Duration `mapstructure:"idle_timeout" validate:"required,min=1s"`
+	BodyLimit     int           `mapstructure:"body_limit" validate:"required,min=1"`
+	EnableMetrics bool          `mapstructure:"enable_metrics"`
+	EnablePprof   bool          `mapstructure:"enable_pprof"`
 }
 
 func Load() (Config, error) {

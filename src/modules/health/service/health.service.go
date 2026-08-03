@@ -1,9 +1,9 @@
 package service
 
 import (
-	"fiber-boilerplate/src/database"
-	"fiber-boilerplate/src/common/redis"
 	"context"
+	"fiber-boilerplate/src/common/redis"
+	"fiber-boilerplate/src/database"
 )
 
 type HealthService struct {

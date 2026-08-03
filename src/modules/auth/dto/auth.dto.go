@@ -4,7 +4,7 @@ import "fiber-boilerplate/src/modules/auth/types"
 
 type AuthRequest struct {
 	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8"`
+	Password string `json:"password" validate:"required"`
 }
 
 type RegisterRequest struct {
@@ -36,5 +36,6 @@ type DeleteAccountRequest struct {
 
 type AuthResponse struct {
 	AccessToken string     `json:"access_token"`
+	ExpiresIn   int        `json:"expires_in"`
 	User        types.User `json:"user"`
 }
