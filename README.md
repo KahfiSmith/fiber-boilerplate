@@ -25,6 +25,9 @@ Backend starter built with Go, Fiber v3, PostgreSQL, and Redis.
 - Protected user profile endpoint (`GET /api/v1/auth/me`)
 - Role-based Access Control (RBAC) middleware (`RequireRole`)
 - Redis-backed rate limiting on auth endpoints
+- Human-readable validation error messages
+- Graceful shutdown support
+- Built-in security headers (Helmet, CORS, Recover)
 
 ## API Surface
 

@@ -3,41 +3,48 @@ package main
 import (
 	"fmt"
 	"log"
-	
-	"fiber-boilerplate/src/config"
-	"fiber-boilerplate/src/database"
-	"fiber-boilerplate/src/common/server"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"fiber-boilerplate/src/common/jwt"
 	"fiber-boilerplate/src/common/middleware"
 	"fiber-boilerplate/src/common/redis"
-	"fiber-boilerplate/src/common/jwt"
-	healthControllerPkg "fiber-boilerplate/src/modules/health/controller"
-	healthServicePkg "fiber-boilerplate/src/modules/health/service"
+	"fiber-boilerplate/src/common/response"
+	"fiber-boilerplate/src/common/server"
+	"fiber-boilerplate/src/config"
+	"fiber-boilerplate/src/database"
 	"fiber-boilerplate/src/modules/auth"
 	"fiber-boilerplate/src/modules/auth/types"
+	healthControllerPkg "fiber-boilerplate/src/modules/health/controller"
+	healthServicePkg "fiber-boilerplate/src/modules/health/service"
 
 	"github.com/gofiber/fiber/v3"
-	"fiber-boilerplate/src/common/response"
+	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v3/middleware/helmet"
+	"github.com/gofiber/fiber/v3/middleware/recover"
 )
 
 func main() {
-	// 1. load config
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	// 2. init infrastructure (db, redis, logger)
 	database.Connect(cfg.DB)
 	redis.Connect(cfg.Redis)
-	database.DB.AutoMigrate(&types.User{}) // simple auto-migrate
+	database.DB.AutoMigrate(&types.User{}) 
 
-	// 3. init app
 	app := fiber.New(fiber.Config{
 		ErrorHandler: response.GlobalErrorHandler,
 	})
+
+	// global middlewares
+	app.Use(recover.New())
+	app.Use(helmet.New())
+	app.Use(cors.New())
 	app.Use(middleware.Logger())
 
-	// 4. init modules (manual di)
 	healthService := healthServicePkg.NewHealthService(cfg.App.Name)
 	healthController := healthControllerPkg.NewHealthController(healthService)
 
@@ -46,17 +53,30 @@ func main() {
 	authService := auth.NewAuthService(authRepo, tokenService, cfg.Auth)
 	authController := auth.NewAuthController(authService, cfg.Auth)
 
-	// 5. register routes
 	server.RegisterRoutes(app, server.Dependencies{
 		HealthController: healthController,
 		AuthController:   authController,
 		Config:           cfg,
 	})
 
-	// 6. start server
-	addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
-	fmt.Printf("Server starting on %s\n", addr)
-	if err := app.Listen(addr); err != nil {
-		log.Fatalf("server exited: %v", err)
+	// start server with graceful shutdown
+	go func() {
+		addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
+		fmt.Printf("Server starting on %s\n", addr)
+		if err := app.Listen(addr); err != nil {
+			log.Fatalf("server exited: %v", err)
+		}
+	}()
+
+	// wait for interrupt signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+	fmt.Println("\nGracefully shutting down server...")
+
+	if err := app.Shutdown(); err != nil {
+		log.Fatalf("server forced to shutdown: %v", err)
 	}
+
+	fmt.Println("Server was successful shutdown.")
 }
