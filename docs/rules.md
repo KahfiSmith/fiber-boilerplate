@@ -13,24 +13,18 @@ Repository-specific rules for prompting and execution quality.
 - Mention output preference (summary format, file list, next steps).
 
 ## Execution Rules
-- Keep third-party setup centralized in `pkg/configs`.
-- Keep route registration in `pkg/server/routes.go`.
-- Preserve layer boundaries:
-  - controllers -> dto + services
-  - services -> repositories + entities
-  - repositories -> models/entities mapping
-  - server -> wiring/runtime
+- Keep configuration setup in `src/config`.
+- Keep route registration in `src/common/server/server.go`.
+- Preserve module-driven structure under `src/modules/<feature>`:
+  - `<feature>.controller.go` handles HTTP input/output.
+  - `<feature>.service.go` handles business logic.
+  - `<feature>.repository.go` handles database access.
+  - `dto/` contains request/response structures.
+  - `types/` contains model definitions.
 - Build concrete objects in composition root (`cmd/api/main.go`) and inject into `server`.
-- Add new env keys to `.env.example`.
-- Update `README.md`, `docs/*`, and `tools/agent/*` docs/comments when behavior/setup/workflow changes.
+- Add new env keys to `.env.example` and `.env`.
+- Update `README.md` and `docs/*` when behavior, setup, or workflow changes.
 - Avoid unnecessary file moves or architectural changes.
-
-## Principal Engineer Posture
-- Optimize for correctness, leverage, and future maintenance rather than short-term convenience.
-- Prefer deleting ambiguity over adding cleverness.
-- Challenge weak assumptions when they create security, operational, or API-design risk.
-- Preserve optionality: prefer changes that are easy to revert, extend, or verify.
-- Keep public API surface intentional; if a feature exists, document the product or operational reason for it.
 
 ## Safety Rules
 - Fail fast on invalid config.

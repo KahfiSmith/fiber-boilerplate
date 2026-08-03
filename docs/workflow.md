@@ -16,14 +16,11 @@ Standard workflow Codex should follow in this repo.
 
 ## 3. Plan
 - Define minimal file set to change.
-- Keep architecture boundaries intact:
-  - setup in `pkg/configs`
-  - wiring in `pkg/server`
-  - request/response contracts in `pkg/dto`
-  - domain objects in `pkg/entities`
-  - reusable model/entity translation in `pkg/mappers`
-  - business logic in `pkg/services`
-  - data access in `pkg/repositories`
+- Keep module-driven architecture boundaries intact:
+  - setup in `src/config`, `src/database`, `src/common/redis`
+  - server wiring in `src/common/server`
+  - shared utilities in `src/common/*`
+  - feature modules in `src/modules/<feature>` (`controller`, `service`, `repository`, `dto/`, `types/`)
 
 ## 4. Implement
 - Make focused edits.

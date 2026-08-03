@@ -5,159 +5,92 @@ Current API contract.
 ## Base URL
 - Local: `http://localhost:3000`
 - Base prefix: `/api/v1`
-- Docker Compose local stack: `http://localhost:3000`
 
-## Optional Observability Endpoints
-- `GET /metrics` when `APP_ENABLE_METRICS=true`
-- `/debug/pprof/*` when `APP_ENABLE_PPROF=true`
-- These routes are intentionally outside `/api/v1`.
-
-## Endpoint: Health Check
-- Method: `GET`
-- Path: `/api/v1/health`
-- Handler: `pkg/controllers/health.go`
+## Health Check Endpoint
+- `GET /api/v1/health`
+- Handler: `src/modules/health/controller/health.controller.go`
 
 ## Auth Endpoints
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/forgot-password`
-- `POST /api/v1/auth/otp/verify`
-- `POST /api/v1/auth/reset-password`
-- `POST /api/v1/auth/refresh`
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/auth/me`
-- `GET /api/v1/auth/sessions`
-- `POST /api/v1/auth/sessions/revoke`
-- `POST /api/v1/auth/sessions/revoke-all`
-- Handler implementation: `pkg/controllers/auth.go`
+- `POST /api/v1/auth/register` — Register a new user
+- `POST /api/v1/auth/login` — Login with email and password (returns access token, sets HttpOnly refresh token cookie)
+- `POST /api/v1/auth/refresh` — Refresh access token using cookie
+- `POST /api/v1/auth/forgot-password` — Request password reset token
+- `POST /api/v1/auth/reset-password` — Submit new password using reset token
+- `POST /api/v1/auth/logout` — Logout specific device session (requires Bearer access token)
+- `GET /api/v1/auth/me` — Protected endpoint returning current user info (requires Bearer access token)
 
-## Auth Protection Model
-- Protected auth endpoints use `Authorization: Bearer <access_token>`.
-- Protected endpoints currently include:
-  - `GET /api/v1/auth/me`
-  - `GET /api/v1/auth/sessions`
-  - `POST /api/v1/auth/sessions/revoke`
-  - `POST /api/v1/auth/sessions/revoke-all`
-- Access tokens include a session identifier (`sid`) claim.
-- Protected endpoints validate both:
-  - JWT signature/expiry
-  - live session presence in the session store
-- Revoking a session in Redis invalidates subsequent protected requests for that session immediately; it no longer waits for access-token expiry.
-
-## Session Management Rationale
-- Session-management endpoints are intentionally public API, not accidental leftovers.
-- This backend treats each refresh token as a server-side session/device record.
-- `GET /api/v1/auth/sessions` exists for device visibility.
-- `POST /api/v1/auth/sessions/revoke` exists for targeted device logout.
-- `POST /api/v1/auth/sessions/revoke-all` exists for account recovery and security reset flows.
-- If the product later chooses a smaller auth surface, these endpoints may be removed as a deliberate simplification, not because they are redundant today.
+## Auth Protection & Security Features
+- Protected endpoints require `Authorization: Bearer <access_token>`.
+- JWT tokens are verified using HS256 algorithm and `JWT_SECRET`.
+- Multi-device sessions supported via UUID `session_id` in Redis keys (`refresh_token:<userID>:<sessionID>`).
+- Rate limiting active on auth endpoints (default 5 requests/min per IP via Redis).
+- Email addresses are normalized (`lowercase` & `trimmed`).
+- RBAC middleware (`RequireRole`) available for role-based route restriction (`user`, `admin`).
 
 ## Auth Request Contracts
 - Register:
-  - `name` (string, required)
+  - `name` (string, required, min 2)
   - `email` (string, required, email format)
   - `password` (string, required, min 8)
 - Login:
   - `email` (string, required, email format)
-  - `password` (string, required)
-- Verify OTP:
-  - `challenge_id` (string, required)
-  - `otp` (string, required, 6 digits)
-- Forgot password:
+  - `password` (string, required, min 8)
+- Forgot Password:
   - `email` (string, required, email format)
-- Reset password:
-  - `challenge_id` (string, required)
-  - `otp` (string, required, 6 digits)
+- Reset Password:
+  - `reset_token` (string, required)
   - `new_password` (string, required, min 8)
 - Refresh:
-  - `refresh_token` (string, required)
+  - Reads `refresh_token` from HttpOnly cookie
 - Logout:
-  - `refresh_token` (string, required)
-- Revoke session:
-  - `session_id` (string, required)
+  - Requires `Authorization: Bearer <access_token>` header
+  - Clears `refresh_token` cookie and revokes session in Redis
 
 ## Auth Response Contracts
 - Register response `data`:
-  - `access_token`
-  - `refresh_token`
-  - `token_type` (`Bearer`)
-  - `expires_in_sec`
-  - `session_id`
-  - `user` (`id`, `name`, `email`)
-- Verify OTP response `data`:
-  - `access_token`
-  - `refresh_token`
-  - `token_type` (`Bearer`)
-  - `expires_in_sec`
-  - `session_id`
-  - `user` (`id`, `name`, `email`)
-- Refresh response `data`:
-  - `access_token`
-  - `refresh_token`
-  - `token_type` (`Bearer`)
-  - `expires_in_sec`
-  - `session_id`
-  - `user` (`id`, `name`, `email`)
+  - `id` (uint)
+  - `name` (string)
+  - `email` (string)
+  - `role` (string)
+  - `created_at` (timestamp)
+  - `updated_at` (timestamp)
 - Login response `data`:
-  - `challenge_id`
-  - `expires_in_sec`
-  - `otp` (only when `AUTH_DEBUG_EXPOSE_OTP=true`, or legacy `AUTH_DEBUG_EXPOSE_TOKENS=true`)
-- Forgot password response `data`:
-  - `challenge_id`
-  - `expires_in_sec`
-  - `otp` (only when `AUTH_DEBUG_EXPOSE_OTP=true`, or legacy `AUTH_DEBUG_EXPOSE_TOKENS=true`)
+  - `access_token` (string)
+  - `user` (`id`, `name`, `email`, `role`, `created_at`, `updated_at`)
+- Refresh response `data`:
+  - `access_token` (string)
+  - `user` (`id`, `name`, `email`, `role`, `created_at`, `updated_at`)
+- Forgot Password response `data`:
+  - `reset_token` (string, returned only when `AUTH_DEBUG_EXPOSE_OTP=true`)
+- Reset Password response:
+  - `success`: true
+  - `message`: `"Password reset successfully"`
+- Logout response:
+  - `success`: true
+  - `message`: `"Logged out successfully"`
 - `GET /api/v1/auth/me` response `data`:
-  - `id`
-  - `name`
-  - `email`
-- `GET /api/v1/auth/sessions` response `data` item:
-  - `session_id`
-  - `user_agent`
-  - `ip_address`
-  - `created_at`
-  - `expires_at`
-  - `current`
+  - `id` (uint)
+  - `email` (string)
+  - `role` (string)
 
 ## Success Status Codes
 - Health: `200`
 - Register: `201`
 - Login: `200`
-- Forgot password: `200`
-- Verify OTP: `200`
-- Reset password: `200`
 - Refresh: `200`
+- Forgot Password: `200`
+- Reset Password: `200`
 - Logout: `200`
 - Me: `200`
-- Sessions: `200`
-- Revoke session: `200`
-- Revoke all sessions: `200`
-
-```json
-{
-  "success": true,
-  "data": {
-    "status": "ok",
-    "message": "service is healthy",
-    "service": "fiber-boilerplate",
-    "timestamp": "2026-03-05T10:00:00Z"
-  }
-}
-```
 
 ## Response Envelope
-Defined in `pkg/dto/response/common.go`:
+Defined in `src/common/response/response.go`:
 - `success` (bool)
-- `message` (string, optional)
+- `message` (string)
 - `data` (any, optional)
 - `error` (any, optional)
 
-## DTO Convention
-- Request DTOs should be placed in `pkg/dto/request`.
-- Response DTOs should be placed in `pkg/dto/response`.
-- Controllers should map entities into response DTOs before returning JSON.
-
-## Notes
-- Route registration entrypoint: `pkg/server/routes.go` (can delegate to `pkg/server/routes/*` modules).
-- Response helper functions: `pkg/utils/response.go`.
-- Auth request/response DTOs live in `pkg/dto/request/auth.go` and `pkg/dto/response/auth.go`.
-- Session-backed auth protection is enforced in `pkg/services/auth_service.go`.
+## Location Reference
+- Route registration: `src/common/server/server.go`
+- Auth routes: `src/modules/auth/auth.controller.go`
+- Health routes: `src/modules/health/health.route.go`

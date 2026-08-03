@@ -19,7 +19,7 @@ This file defines how Codex should work in this repository so responses are cons
 
 ## Engineering Principles
 - DRY: avoid duplicated validation/bootstrap logic; extract shared helpers.
-- SOLID: keep each package focused and inject dependencies from `cmd/api/main.go`.
+- SOLID: keep each module focused and inject dependencies from `cmd/api/main.go`.
 - KISS: prefer straightforward implementations and minimal abstraction.
 
 ## Standard Workflow Per Prompt
@@ -27,31 +27,28 @@ This file defines how Codex should work in this repository so responses are cons
 2. Scan related files quickly (`rg`, `sed`, `ls`).
 3. Identify root cause/design gap before editing.
 4. Apply minimal but complete changes.
-5. Verify with local checks (`go test ./...`, `go run ./cmd/api`) when available.
+5. Verify with local checks (`go test ./...`, `go vet ./...`, `go run ./cmd/api`) when available.
 6. Return a short summary:
    - what changed
    - files touched
    - what to run next (if verification not possible in environment)
 
 ## Project Architecture Rules
-- Keep third-party setup in `pkg/configs`:
-  - `viper` config loading
-  - `zap` logger setup
-  - `gorm` DB setup
-  - `fiber` app/middleware/listen setup
-  - `validator` initialization
-- Keep HTTP server composition in `pkg/server`.
-- Keep route registration in `pkg/server/routes.go`.
-- Keep business logic in `pkg/services`.
-- Keep data access contracts/implementations in `pkg/repositories`.
-- Keep handlers/controllers thin (`pkg/controllers`): parse request, call service, return response.
+- Keep config setup in `src/config`.
+- Keep database setup in `src/database`.
+- Keep shared infrastructure/utilities in `src/common/*` (`jwt`, `middleware`, `redis`, `response`, `server`, `validator`, `exceptions`).
+- Keep route registration in `src/common/server/server.go`.
+- Keep feature modules under `src/modules/<feature>` containing:
+  - `<feature>.controller.go` — HTTP handlers (parse request, call service, return response)
+  - `<feature>.service.go` — business logic
+  - `<feature>.repository.go` — database operations
+  - `dto/` — request and response structures
+  - `types/` — domain models and types
 
 ## Coding Conventions
 - Use small focused functions.
-- Avoid global mutable state unless necessary.
 - Return wrapped errors with context (`fmt.Errorf("context: %w", err)`).
 - Keep config validation strict and fail fast on startup.
-- Prefer explicit config fields over magic constants in runtime code.
 
 ## Change Boundaries
 - Do not introduce new architectural layers unless requested.
@@ -63,7 +60,6 @@ This file defines how Codex should work in this repository so responses are cons
 - No stale references to moved packages/files.
 - New env keys added to `.env.example` when needed.
 - README updated when behavior/setup changes.
-- If tests/build cannot run in this environment, state that clearly.
 
 ## Response Pattern
 - Start with result first.

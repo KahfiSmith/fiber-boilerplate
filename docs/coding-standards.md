@@ -8,65 +8,40 @@ Coding conventions for this repository.
 - Avoid premature abstraction.
 - Keep functions small and cohesive.
 
-## Principal Engineer Expectations
-- Prefer strong defaults and explicit tradeoffs over hidden behavior.
-- Make operationally important behavior easy to discover in code and docs.
-- Do not keep features that lack a clear product, security, or operational reason.
-- When a feature is intentionally kept, document why it exists.
-
 ## Engineering Principles (DRY, SOLID, KISS)
 - DRY:
-  - Consolidate repeated logic into shared helpers.
-  - Keep env defaults/validation centralized in `pkg/configs`.
+  - Consolidate repeated logic into shared helpers (`src/common/*`).
 - SOLID:
-  - Single Responsibility: keep wiring in `server`, business logic in `services`.
-  - Dependency Inversion: build concrete dependencies in `cmd/api/main.go`, inject into `server`.
-  - Interface Segregation: keep interfaces small and purpose-specific.
+  - Single Responsibility: keep wiring in `src/common/server`, business logic in services under `src/modules/*`.
+  - Dependency Inversion: build concrete dependencies in `cmd/api/main.go`, inject into server routes.
 - KISS:
   - Prefer straightforward flow over framework-heavy abstraction.
-  - Add layers only when complexity justifies them.
+  - Keep modules localized under `src/modules/<feature>`.
 
 ## Error Handling
-- Return wrapped errors with context:
-  - `fmt.Errorf("context: %w", err)`
-- Do not swallow errors silently.
-- Fail fast on startup/configuration problems.
+- Return wrapped errors with context: `fmt.Errorf("context: %w", err)`.
+- Custom HTTP exceptions use `src/common/exceptions`.
+- Global error handling uses `src/common/response/response.go`.
 
 ## Package and Layer Boundaries
-- Keep library bootstrap/setup in `pkg/configs`.
-- Keep app/runtime wiring in `pkg/server`.
-- Keep HTTP handlers thin in `pkg/controllers`.
-- Keep request parsing/validation helpers close to the transport layer instead of `pkg/configs`.
-- Keep server middleware in `pkg/server/middleware`.
-- Put HTTP request contracts in `pkg/dto/request`.
-- Put HTTP response contracts in `pkg/dto/response`.
-- Put domain objects in `pkg/entities`.
-- Put reusable model/entity conversion logic in `pkg/mappers`.
-- Put business logic in `pkg/services`.
-- Put data access contracts/implementations in `pkg/repositories`.
-- In `pkg/repositories`, prefer one contract file plus storage-specific implementation files instead of mixing both in one large file.
-
-## Configuration
-- Add defaults and validation for every new env key.
-- Keep `.env.example` updated when config changes.
-- Keep DB-related config logic in `pkg/configs/db.go`.
+- Config schema in `src/config`.
+- Database init in `src/database`.
+- Shared components in `src/common/*` (`jwt`, `middleware`, `redis`, `response`, `server`, `validator`, `exceptions`).
+- Modules in `src/modules/<feature>` containing:
+  - `<feature>.controller.go`
+  - `<feature>.service.go`
+  - `<feature>.repository.go`
+  - `dto/`
+  - `types/`
 
 ## API and Responses
-- Keep response envelope consistent with the shared response DTO (`dto/response.APIResponse`).
-- Prefer new API contracts under `pkg/dto/request` and `pkg/dto/response`.
-- Prefer utility response helpers in `pkg/utils/response.go`.
-- Preserve backward compatibility unless requested.
+- Response format: `response.APIResponse` (`success`, `data`, `error`).
+- Success responses use `response.Success()`.
+- Error responses use `response.HandleError()`.
 
 ## Logging
-- Use structured logs via zap fields.
+- Logger middleware in `src/common/middleware/logger.middleware.go`.
 - Avoid logging sensitive values (passwords, tokens, raw secrets).
 
-## Database
-- Use pool settings from config.
-- Keep DSN creation centralized in DB config helper.
-- Validate connectivity on startup path.
-
 ## Documentation
-- Update docs when architecture, config, or behavior changes.
-- When runtime setup changes, document both host-based and container-networked env values if they differ.
-- Keep `README.md`, `docs/*`, and `tools/agent/*` guidance aligned with the current repo reality.
+- Keep `README.md`, `docs/*`, and `AGENTS.md` aligned with the current codebase structure.
