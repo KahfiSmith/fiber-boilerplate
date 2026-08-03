@@ -2,11 +2,13 @@ package server
 
 import (
 	"time"
-	"fiber-boilerplate/src/modules/health"
-	healthControllerPkg "fiber-boilerplate/src/modules/health/controller"
-	"fiber-boilerplate/src/modules/auth"
+
 	"fiber-boilerplate/src/common/middleware"
 	"fiber-boilerplate/src/config"
+	"fiber-boilerplate/src/modules/auth"
+	"fiber-boilerplate/src/modules/health"
+	healthControllerPkg "fiber-boilerplate/src/modules/health/controller"
+
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -22,7 +24,8 @@ func RegisterRoutes(app *fiber.App, deps Dependencies) {
 
 	protected := middleware.Protected(deps.Config.Auth)
 	rateLimiter := middleware.RateLimiter(deps.Config.Auth.RateLimitPerMin, time.Minute)
+	originValidator := middleware.ValidateOrigin(deps.Config.Auth)
 
 	health.RegisterRoutes(v1, deps.HealthController)
-	auth.RegisterRoutes(v1, deps.AuthController, protected, rateLimiter)
+	auth.RegisterRoutes(v1, deps.AuthController, protected, rateLimiter, originValidator)
 }

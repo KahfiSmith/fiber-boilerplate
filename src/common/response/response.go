@@ -5,12 +5,14 @@ import (
 	"fmt"
 
 	"fiber-boilerplate/src/common/exceptions"
-	"github.com/gofiber/fiber/v3"
+
 	"github.com/go-playground/validator/v10"
+	"github.com/gofiber/fiber/v3"
 )
 
 type APIResponse struct {
 	Success bool        `json:"success"`
+	Code    string      `json:"code,omitempty"`
 	Message string      `json:"message,omitempty"`
 	Data    interface{} `json:"data,omitempty"`
 	Error   interface{} `json:"error,omitempty"`
@@ -26,11 +28,13 @@ func Success(ctx fiber.Ctx, status int, message string, data interface{}) error 
 
 func HandleError(ctx fiber.Ctx, err error) error {
 	var statusCode = fiber.StatusInternalServerError
+	var codeStr string
 	var errorResponse interface{} = "Internal Server Error"
 
 	var appErr *exceptions.HttpError
 	if errors.As(err, &appErr) {
 		statusCode = appErr.Code
+		codeStr = appErr.CodeStr
 		errorResponse = appErr.Message
 	}
 
@@ -43,6 +47,7 @@ func HandleError(ctx fiber.Ctx, err error) error {
 	var valErrs validator.ValidationErrors
 	if errors.As(err, &valErrs) {
 		statusCode = fiber.StatusBadRequest
+		codeStr = "VALIDATION_ERROR"
 		errs := make(map[string]string)
 		for _, e := range valErrs {
 			errs[e.Field()] = fmt.Sprintf("failed on the '%s' tag", e.Tag())
@@ -57,6 +62,7 @@ func HandleError(ctx fiber.Ctx, err error) error {
 
 	return ctx.Status(statusCode).JSON(APIResponse{
 		Success: false,
+		Code:    codeStr,
 		Message: msg,
 		Error:   errorResponse,
 	})
