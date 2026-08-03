@@ -33,16 +33,22 @@ func main() {
 
 	database.Connect(cfg.DB)
 	redis.Connect(cfg.Redis)
-	database.DB.AutoMigrate(&types.User{}) 
+	database.DB.AutoMigrate(&types.User{})
 
 	app := fiber.New(fiber.Config{
 		ErrorHandler: response.GlobalErrorHandler,
 	})
 
-	// global middlewares
 	app.Use(recover.New())
 	app.Use(helmet.New())
-	app.Use(cors.New())
+
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{cfg.Auth.FrontendOrigin},
+		AllowCredentials: true,
+		AllowHeaders:     []string{"Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+	}))
+
 	app.Use(middleware.Logger())
 
 	healthService := healthServicePkg.NewHealthService(cfg.App.Name)
@@ -50,7 +56,8 @@ func main() {
 
 	tokenService := jwt.NewTokenService(cfg.Auth)
 	authRepo := auth.NewAuthRepository()
-	authService := auth.NewAuthService(authRepo, tokenService, cfg.Auth)
+	refreshRepo := auth.NewRefreshRepository()
+	authService := auth.NewAuthService(authRepo, refreshRepo, tokenService, cfg.Auth)
 	authController := auth.NewAuthController(authService, cfg.Auth)
 
 	server.RegisterRoutes(app, server.Dependencies{
@@ -59,7 +66,6 @@ func main() {
 		Config:           cfg,
 	})
 
-	// start server with graceful shutdown
 	go func() {
 		addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
 		fmt.Printf("Server starting on %s\n", addr)
@@ -68,7 +74,6 @@ func main() {
 		}
 	}()
 
-	// wait for interrupt signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
