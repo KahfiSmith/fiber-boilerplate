@@ -16,7 +16,7 @@ Repository-specific rules for prompting and execution quality.
 - Keep configuration setup in `src/config`.
 - Keep route registration in `src/common/server/server.go`.
 - Preserve module-driven structure under `src/modules/<feature>`:
-  - `<feature>.controller.go` handles HTTP input/output.
+  - `<feature>.controller.go` handles HTTP input/output and route registration.
   - `<feature>.service.go` handles business logic.
   - `<feature>.repository.go` handles database access.
   - `dto/` contains request/response structures.
