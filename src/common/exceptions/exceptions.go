@@ -2,7 +2,7 @@ package exceptions
 
 import "github.com/gofiber/fiber/v3"
 
-// HttpError represents a standard HTTP error structure
+// httperror represents a standard http error structure
 type HttpError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -19,7 +19,7 @@ func New(code int, message string) *HttpError {
 	}
 }
 
-// Common Exceptions
+// common exceptions
 func NotFound(msg string) *HttpError {
 	if msg == "" {
 		msg = "Resource not found"
@@ -46,4 +46,11 @@ func Internal(msg string) *HttpError {
 		msg = "Internal server error"
 	}
 	return New(fiber.StatusInternalServerError, msg)
+}
+
+func TooManyRequests(msg string) *HttpError {
+	if msg == "" {
+		msg = "Too many requests"
+	}
+	return New(fiber.StatusTooManyRequests, msg)
 }
