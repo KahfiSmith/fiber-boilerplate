@@ -24,25 +24,49 @@ func NewAuthController(service *AuthService, cfg config.AuthConfig) *AuthControl
 	}
 }
 
+func (c *AuthController) setRefreshCookie(ctx fiber.Ctx, token string, expiresAt time.Time) {
+	ctx.Cookie(&fiber.Cookie{
+		Name:     c.cfg.CookieName,
+		Value:    token,
+		Path:     c.cfg.CookiePath,
+		Domain:   c.cfg.CookieDomain,
+		Expires:  expiresAt,
+		MaxAge:   int(c.cfg.RefreshTokenTTL.Seconds()),
+		Secure:   c.cfg.CookieSecure,
+		HTTPOnly: true,
+		SameSite: c.cfg.CookieSameSite,
+	})
+}
+
+func (c *AuthController) clearRefreshCookie(ctx fiber.Ctx) {
+	ctx.Cookie(&fiber.Cookie{
+		Name:     c.cfg.CookieName,
+		Value:    "",
+		Path:     c.cfg.CookiePath,
+		Domain:   c.cfg.CookieDomain,
+		Expires:  time.Unix(0, 0),
+		MaxAge:   -1,
+		Secure:   c.cfg.CookieSecure,
+		HTTPOnly: true,
+		SameSite: c.cfg.CookieSameSite,
+	})
+}
+
 func (c *AuthController) Login(ctx fiber.Ctx) error {
 	var req dto.AuthRequest
 	if err := validator.ParseAndValidate(ctx, &req); err != nil {
 		return response.HandleError(ctx, err)
 	}
 
-	res, refreshToken, err := c.service.Login(req)
+	ip := ctx.IP()
+	userAgent := ctx.Get("User-Agent")
+
+	res, refreshToken, err := c.service.Login(req, ip, userAgent)
 	if err != nil {
 		return response.HandleError(ctx, err)
 	}
 
-	ctx.Cookie(&fiber.Cookie{
-		Name:     "refresh_token",
-		Value:    refreshToken,
-		Expires:  time.Now().Add(c.cfg.RefreshTokenTTL),
-		HTTPOnly: true,
-		Secure:   true,
-		SameSite: "Strict",
-	})
+	c.setRefreshCookie(ctx, refreshToken, time.Now().Add(c.cfg.RefreshTokenTTL))
 
 	return response.Success(ctx, fiber.StatusOK, "Login successful", res)
 }
@@ -69,26 +93,35 @@ func (c *AuthController) Register(ctx fiber.Ctx) error {
 }
 
 func (c *AuthController) Refresh(ctx fiber.Ctx) error {
-	oldRefreshToken := ctx.Cookies("refresh_token")
-	if oldRefreshToken == "" {
-		return response.HandleError(ctx, exceptions.Unauthorized("Missing refresh token"))
+	refreshToken := ctx.Cookies(c.cfg.CookieName)
+	if refreshToken == "" {
+		return response.HandleError(ctx, exceptions.Unauthorized("REFRESH_TOKEN_MISSING", "Refresh token is missing"))
 	}
 
-	res, newRefreshToken, err := c.service.Refresh(oldRefreshToken)
+	ip := ctx.IP()
+	userAgent := ctx.Get("User-Agent")
+
+	res, newRefreshToken, err := c.service.Refresh(refreshToken, ip, userAgent)
 	if err != nil {
+		c.clearRefreshCookie(ctx)
 		return response.HandleError(ctx, err)
 	}
 
-	ctx.Cookie(&fiber.Cookie{
-		Name:     "refresh_token",
-		Value:    newRefreshToken,
-		Expires:  time.Now().Add(c.cfg.RefreshTokenTTL),
-		HTTPOnly: true,
-		Secure:   true,
-		SameSite: "Strict",
-	})
+	c.setRefreshCookie(ctx, newRefreshToken, time.Now().Add(c.cfg.RefreshTokenTTL))
 
 	return response.Success(ctx, fiber.StatusOK, "Token refreshed successfully", res)
+}
+
+func (c *AuthController) Logout(ctx fiber.Ctx) error {
+	refreshToken := ctx.Cookies(c.cfg.CookieName)
+
+	if refreshToken != "" {
+		_ = c.service.Logout(refreshToken)
+	}
+
+	c.clearRefreshCookie(ctx)
+
+	return response.Success(ctx, fiber.StatusOK, "Logout successful", nil)
 }
 
 func (c *AuthController) ForgotPassword(ctx fiber.Ctx) error {
@@ -155,26 +188,10 @@ func (c *AuthController) ResendVerification(ctx fiber.Ctx) error {
 	return response.Success(ctx, fiber.StatusOK, "Verification token generated successfully", resData)
 }
 
-func (c *AuthController) Logout(ctx fiber.Ctx) error {
-	userID, okUser := ctx.Locals("user_id").(uint)
-	sessionID, okSess := ctx.Locals("session_id").(string)
-	if !okUser || !okSess {
-		c.clearCookie(ctx)
-		return response.Success(ctx, fiber.StatusOK, "Logged out (cookie cleared)", nil)
-	}
-
-	if err := c.service.Logout(userID, sessionID); err != nil {
-		return response.HandleError(ctx, err)
-	}
-
-	c.clearCookie(ctx)
-	return response.Success(ctx, fiber.StatusOK, "Logged out successfully", nil)
-}
-
 func (c *AuthController) DeleteAccount(ctx fiber.Ctx) error {
 	userID, okUser := ctx.Locals("user_id").(uint)
 	if !okUser {
-		return response.HandleError(ctx, exceptions.Unauthorized("Unauthorized"))
+		return response.HandleError(ctx, exceptions.Unauthorized("ACCESS_TOKEN_INVALID", "Unauthorized"))
 	}
 
 	var req dto.DeleteAccountRequest
@@ -186,32 +203,21 @@ func (c *AuthController) DeleteAccount(ctx fiber.Ctx) error {
 		return response.HandleError(ctx, err)
 	}
 
-	c.clearCookie(ctx)
+	c.clearRefreshCookie(ctx)
 	return response.Success(ctx, fiber.StatusOK, "Account deleted successfully", nil)
 }
 
-func (c *AuthController) clearCookie(ctx fiber.Ctx) {
-	ctx.Cookie(&fiber.Cookie{
-		Name:     "refresh_token",
-		Value:    "",
-		Expires:  time.Now().Add(-1 * time.Hour),
-		HTTPOnly: true,
-		Secure:   true,
-		SameSite: "Strict",
-	})
-}
-
-func RegisterRoutes(router fiber.Router, controller *AuthController, protected fiber.Handler, rateLimiter fiber.Handler) {
+func RegisterRoutes(router fiber.Router, controller *AuthController, protected fiber.Handler, rateLimiter fiber.Handler, originValidator fiber.Handler) {
 	authGroup := router.Group("/auth")
-	authGroup.Post("/login", rateLimiter, controller.Login)
-	authGroup.Post("/register", rateLimiter, controller.Register)
-	authGroup.Post("/refresh", rateLimiter, controller.Refresh)
-	authGroup.Post("/forgot-password", rateLimiter, controller.ForgotPassword)
-	authGroup.Post("/reset-password", rateLimiter, controller.ResetPassword)
-	authGroup.Post("/verify-email", rateLimiter, controller.VerifyEmail)
-	authGroup.Post("/resend-verification", rateLimiter, controller.ResendVerification)
+	authGroup.Post("/login", originValidator, rateLimiter, controller.Login)
+	authGroup.Post("/register", originValidator, rateLimiter, controller.Register)
+	authGroup.Post("/refresh", originValidator, rateLimiter, controller.Refresh)
+	authGroup.Post("/logout", originValidator, rateLimiter, controller.Logout) // Idempotent, doesn't force protected access-token middleware
+	authGroup.Post("/forgot-password", originValidator, rateLimiter, controller.ForgotPassword)
+	authGroup.Post("/reset-password", originValidator, rateLimiter, controller.ResetPassword)
+	authGroup.Post("/verify-email", originValidator, rateLimiter, controller.VerifyEmail)
+	authGroup.Post("/resend-verification", originValidator, rateLimiter, controller.ResendVerification)
 
-	authGroup.Post("/logout", protected, controller.Logout)
 	authGroup.Delete("/account", protected, controller.DeleteAccount)
 
 	authGroup.Get("/me", protected, func(c fiber.Ctx) error {

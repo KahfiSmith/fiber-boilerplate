@@ -1,8 +1,8 @@
 package auth
 
 import (
-	"fiber-boilerplate/src/modules/auth/types"
 	"fiber-boilerplate/src/database"
+	"fiber-boilerplate/src/modules/auth/types"
 )
 
 type AuthRepository struct{}
