@@ -16,10 +16,12 @@ Backend starter built with Go, Fiber v3, PostgreSQL, and Redis.
 
 - Health check endpoint (`GET /api/v1/health`)
 - Email/password registration with email normalization (`POST /api/v1/auth/register`)
+- Email verification flow (`POST /api/v1/auth/verify-email`, `POST /api/v1/auth/resend-verification`)
 - Login with multi-device session support (`POST /api/v1/auth/login`)
 - Token refresh with session rotation (`POST /api/v1/auth/refresh`)
 - Forgot password & reset password flow (`POST /api/v1/auth/forgot-password`, `POST /api/v1/auth/reset-password`)
 - Logout per device session (`POST /api/v1/auth/logout`)
+- Delete account with password confirmation (`DELETE /api/v1/auth/account`)
 - Protected user profile endpoint (`GET /api/v1/auth/me`)
 - Role-based Access Control (RBAC) middleware (`RequireRole`)
 - Redis-backed rate limiting on auth endpoints
@@ -28,11 +30,14 @@ Backend starter built with Go, Fiber v3, PostgreSQL, and Redis.
 
 - `GET /api/v1/health`
 - `POST /api/v1/auth/register`
+- `POST /api/v1/auth/verify-email`
+- `POST /api/v1/auth/resend-verification`
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/refresh`
 - `POST /api/v1/auth/forgot-password`
 - `POST /api/v1/auth/reset-password`
 - `POST /api/v1/auth/logout` (Protected: requires `Authorization: Bearer <access_token>`)
+- `DELETE /api/v1/auth/account` (Protected: requires `Authorization: Bearer <access_token>`)
 - `GET /api/v1/auth/me` (Protected: requires `Authorization: Bearer <access_token>`)
 
 Detailed contracts live in `docs/api.md`.

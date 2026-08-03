@@ -11,7 +11,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// --- controller ---
 func (c *AuthController) Logout(ctx fiber.Ctx) error {
 	userID, okUser := ctx.Locals("user_id").(uint)
 	sessionID, okSess := ctx.Locals("session_id").(string)
@@ -32,19 +31,17 @@ func (c *AuthController) clearCookie(ctx fiber.Ctx) {
 	ctx.Cookie(&fiber.Cookie{
 		Name:     "refresh_token",
 		Value:    "",
-		Expires:  time.Now().Add(-1 * time.Hour), // expired ke belakang
+		Expires:  time.Now().Add(-1 * time.Hour), 
 		HTTPOnly: true,
 		Secure:   true,
 		SameSite: "Strict",
 	})
 }
 
-// --- service ---
 func (s *AuthService) Logout(userID uint, sessionID string) error {
 	ctx := context.Background()
 	key := fmt.Sprintf("refresh_token:%d:%s", userID, sessionID)
 	
-	// hapus token dari redis
 	if err := redisclient.Client.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("failed to delete refresh token: %w", err)
 	}

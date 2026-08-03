@@ -12,7 +12,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// ratelimiter returns a middleware that limits requests per ip using redis sliding window / counter
 func RateLimiter(maxRequests int, window time.Duration) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		if redis.Client == nil {
@@ -25,7 +24,7 @@ func RateLimiter(maxRequests int, window time.Duration) fiber.Handler {
 
 		count, err := redis.Client.Incr(ctx, key).Result()
 		if err != nil {
-			return c.Next() // fail-open if redis error
+			return c.Next() 
 		}
 
 		if count == 1 {

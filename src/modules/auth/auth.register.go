@@ -20,36 +20,46 @@ func (c *AuthController) Register(ctx fiber.Ctx) error {
 		return response.HandleError(ctx, err)
 	}
 
-	res, err := c.service.Register(req)
+	user, token, err := c.service.Register(req)
 	if err != nil {
 		return response.HandleError(ctx, err)
 	}
 
-	return response.Success(ctx, fiber.StatusCreated, "User registered successfully", res)
+	resData := fiber.Map{
+		"user": user,
+	}
+	if c.cfg.DebugExposeOTP {
+		resData["verification_token"] = token
+	}
+
+	return response.Success(ctx, fiber.StatusCreated, "User registered successfully", resData)
 }
 
-func (s *AuthService) Register(req dto.RegisterRequest) (types.User, error) {
+func (s *AuthService) Register(req dto.RegisterRequest) (types.User, string, error) {
 	cleanEmail := strings.ToLower(strings.TrimSpace(req.Email))
 	exists, _ := s.repo.FindByEmail(cleanEmail)
 	if exists != nil {
-		return types.User{}, exceptions.BadRequest("Email already in use")
+		return types.User{}, "", exceptions.BadRequest("Email already in use")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), s.cfg.BcryptCost)
 	if err != nil {
-		return types.User{}, fmt.Errorf("hash password: %w", err)
+		return types.User{}, "", fmt.Errorf("hash password: %w", err)
 	}
 
 	user := types.User{
-		Name:         strings.TrimSpace(req.Name),
-		Email:        cleanEmail,
-		PasswordHash: string(hashedPassword),
-		Role:         "user",
+		Name:            strings.TrimSpace(req.Name),
+		Email:           cleanEmail,
+		PasswordHash:    string(hashedPassword),
+		Role:            "user",
+		IsEmailVerified: false,
 	}
 
 	if err := s.repo.Create(&user); err != nil {
-		return types.User{}, fmt.Errorf("create user: %w", err)
+		return types.User{}, "", fmt.Errorf("create user: %w", err)
 	}
 
-	return user, nil
+	verifyToken, _ := s.createVerificationToken(user.ID)
+
+	return user, verifyToken, nil
 }

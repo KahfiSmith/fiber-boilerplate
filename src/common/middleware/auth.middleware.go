@@ -33,15 +33,15 @@ func Protected(cfg config.AuthConfig) fiber.Handler {
 		return response.HandleError(c, fiber.ErrUnauthorized)
 	}
 
-		c.Locals("user_id", claims.ID) // uint
+		c.Locals("user_id", claims.ID)
 		c.Locals("email", claims.Email)
 		c.Locals("role", claims.Role)
+		c.Locals("is_email_verified", claims.IsEmailVerified)
 		c.Locals("session_id", claims.SessionID)
 		return c.Next()
 	}
 }
 
-// requirerole checks if the authenticated user has one of the allowed roles
 func RequireRole(roles ...string) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		userRole, ok := c.Locals("role").(string)

@@ -19,10 +19,11 @@ func NewTokenService(cfg config.AuthConfig) *TokenService {
 
 func (s *TokenService) GenerateTokens(user types.User, sessionID string) (string, string, error) {
 	accessClaims := types.JwtPayload{
-		ID:        user.ID,
-		Email:     user.Email,
-		Role:      user.Role,
-		SessionID: sessionID,
+		ID:              user.ID,
+		Email:           user.Email,
+		Role:            user.Role,
+		IsEmailVerified: user.IsEmailVerified,
+		SessionID:       sessionID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.cfg.AccessTokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -36,10 +37,11 @@ func (s *TokenService) GenerateTokens(user types.User, sessionID string) (string
 	}
 
 	refreshClaims := types.JwtPayload{
-		ID:        user.ID,
-		Email:     user.Email,
-		Role:      user.Role,
-		SessionID: sessionID,
+		ID:              user.ID,
+		Email:           user.Email,
+		Role:            user.Role,
+		IsEmailVerified: user.IsEmailVerified,
+		SessionID:       sessionID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.cfg.RefreshTokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

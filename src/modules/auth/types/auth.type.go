@@ -7,19 +7,21 @@ import (
 )
 
 type User struct {
-	ID           uint      `json:"id" gorm:"primarykey"`
-	Name         string    `json:"name" gorm:"type:varchar(255);not null" validate:"required,min=2"`
-	Email        string    `json:"email" gorm:"type:varchar(255);uniqueIndex;not null" validate:"required,email"`
-	PasswordHash string    `json:"-" gorm:"type:varchar(255);not null"`
-	Role         string    `json:"role" gorm:"type:varchar(50);not null;default:'user'"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID              uint      `json:"id" gorm:"primarykey"`
+	Name            string    `json:"name" gorm:"type:varchar(255);not null" validate:"required,min=2"`
+	Email           string    `json:"email" gorm:"type:varchar(255);uniqueIndex;not null" validate:"required,email"`
+	PasswordHash    string    `json:"-" gorm:"type:varchar(255);not null"`
+	Role            string    `json:"role" gorm:"type:varchar(50);not null;default:'user'"`
+	IsEmailVerified bool      `json:"is_email_verified" gorm:"default:false"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 type JwtPayload struct {
-	ID        uint   `json:"id"`
-	Email     string `json:"email"`
-	Role      string `json:"role"`
-	SessionID string `json:"session_id,omitempty"`
+	ID              uint   `json:"id"`
+	Email           string `json:"email"`
+	Role            string `json:"role"`
+	IsEmailVerified bool   `json:"is_email_verified"`
+	SessionID       string `json:"session_id,omitempty"`
 	jwt.RegisteredClaims
 }

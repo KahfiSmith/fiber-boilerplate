@@ -22,6 +22,18 @@ type ResetPasswordRequest struct {
 	NewPassword string `json:"new_password" validate:"required,min=8"`
 }
 
+type VerifyEmailRequest struct {
+	Token string `json:"token" validate:"required"`
+}
+
+type ResendVerificationRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type DeleteAccountRequest struct {
+	Password string `json:"password" validate:"required"`
+}
+
 type AuthResponse struct {
 	AccessToken string     `json:"access_token"`
 	User        types.User `json:"user"`

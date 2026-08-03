@@ -28,21 +28,18 @@ func HandleError(ctx fiber.Ctx, err error) error {
 	var statusCode = fiber.StatusInternalServerError
 	var errorResponse interface{} = "Internal Server Error"
 
-	// custom application exceptions
 	var appErr *exceptions.HttpError
 	if errors.As(err, &appErr) {
 		statusCode = appErr.Code
 		errorResponse = appErr.Message
 	}
 
-	// fiber errors (e.g., 404, 405)
 	var fiberErr *fiber.Error
 	if errors.As(err, &fiberErr) {
 		statusCode = fiberErr.Code
 		errorResponse = fiberErr.Message
 	}
 
-	// validator errors
 	var valErrs validator.ValidationErrors
 	if errors.As(err, &valErrs) {
 		statusCode = fiber.StatusBadRequest
@@ -65,7 +62,6 @@ func HandleError(ctx fiber.Ctx, err error) error {
 	})
 }
 
-// globalerrorhandler for fiber app
 func GlobalErrorHandler(ctx fiber.Ctx, err error) error {
 	return HandleError(ctx, err)
 }

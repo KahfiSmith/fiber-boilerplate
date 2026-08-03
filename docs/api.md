@@ -11,12 +11,15 @@ Current API contract.
 - Handler: `src/modules/health/controller/health.controller.go`
 
 ## Auth Endpoints
-- `POST /api/v1/auth/register` — Register a new user
+- `POST /api/v1/auth/register` — Register a new user (returns user info and `verification_token` when debug enabled)
 - `POST /api/v1/auth/login` — Login with email and password (returns access token, sets HttpOnly refresh token cookie)
 - `POST /api/v1/auth/refresh` — Refresh access token using cookie
+- `POST /api/v1/auth/verify-email` — Verify email address using verification token
+- `POST /api/v1/auth/resend-verification` — Request a new email verification token
 - `POST /api/v1/auth/forgot-password` — Request password reset token
 - `POST /api/v1/auth/reset-password` — Submit new password using reset token
 - `POST /api/v1/auth/logout` — Logout specific device session (requires Bearer access token)
+- `DELETE /api/v1/auth/account` — Delete user account with password confirmation (requires Bearer access token)
 - `GET /api/v1/auth/me` — Protected endpoint returning current user info (requires Bearer access token)
 
 ## Auth Protection & Security Features
@@ -40,11 +43,18 @@ Current API contract.
 - Reset Password:
   - `reset_token` (string, required)
   - `new_password` (string, required, min 8)
+- Verify Email:
+  - `token` (string, required)
+- Resend Verification:
+  - `email` (string, required, email format)
 - Refresh:
   - Reads `refresh_token` from HttpOnly cookie
 - Logout:
   - Requires `Authorization: Bearer <access_token>` header
   - Clears `refresh_token` cookie and revokes session in Redis
+- Delete Account:
+  - Requires `Authorization: Bearer <access_token>` header
+  - `password` (string, required)
 
 ## Auth Response Contracts
 - Register response `data`:

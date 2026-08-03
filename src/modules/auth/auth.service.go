@@ -44,7 +44,6 @@ func (s *AuthService) Login(req dto.AuthRequest) (dto.AuthResponse, string, erro
 		return dto.AuthResponse{}, "", fmt.Errorf("generate tokens: %w", err)
 	}
 
-	// store refresh token per session in redis
 	ctx := context.Background()
 	key := fmt.Sprintf("refresh_token:%d:%s", user.ID, sessionID)
 	if err := redisclient.Client.Set(ctx, key, refreshToken, s.cfg.RefreshTokenTTL).Err(); err != nil {

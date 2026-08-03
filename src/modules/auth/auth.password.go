@@ -18,8 +18,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// --- controller ---
-
 func (c *AuthController) ForgotPassword(ctx fiber.Ctx) error {
 	var req dto.ForgotPasswordRequest
 	if err := validator.ParseAndValidate(ctx, &req); err != nil {
@@ -52,13 +50,10 @@ func (c *AuthController) ResetPassword(ctx fiber.Ctx) error {
 	return response.Success(ctx, fiber.StatusOK, "Password reset successfully", nil)
 }
 
-// --- service ---
-
 func (s *AuthService) ForgotPassword(req dto.ForgotPasswordRequest) (string, error) {
 	cleanEmail := strings.ToLower(strings.TrimSpace(req.Email))
 	user, err := s.repo.FindByEmail(cleanEmail)
 	if err != nil {
-		// return empty token without error to avoid email enumeration
 		return "", nil
 	}
 
@@ -98,7 +93,6 @@ func (s *AuthService) ResetPassword(req dto.ResetPasswordRequest) error {
 		return fmt.Errorf("update password: %w", err)
 	}
 
-	// delete reset token so it cannot be reused
 	redisclient.Client.Del(ctx, key)
 
 	return nil
