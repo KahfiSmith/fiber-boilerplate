@@ -9,7 +9,7 @@ import (
 
 var validate = validator.New()
 
-// ParseAndValidate parses the request body and validates the struct
+// parseandvalidate parses the request body and validates the struct
 func ParseAndValidate(c fiber.Ctx, payload any) error {
 	if err := c.Bind().JSON(payload); err != nil {
 		return exceptions.BadRequest("Invalid request body payload")
@@ -20,7 +20,7 @@ func ParseAndValidate(c fiber.Ctx, payload any) error {
 		for _, err := range err.(validator.ValidationErrors) {
 			errMsgs = append(errMsgs, fmt.Sprintf("Field '%s' failed on the '%s' tag", err.Field(), err.Tag()))
 		}
-		// We return the first validation error for simplicity
+		// we return the first validation error for simplicity
 		return exceptions.BadRequest(errMsgs[0])
 	}
 
