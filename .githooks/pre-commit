@@ -1,0 +1,10 @@
+#!/bin/sh
+# Pre-commit hook: run backend verification before committing.
+# Runs pnpm verify:fast (go build/vet/test + docs:check).
+
+echo "Running verify:fast..."
+if ! pnpm verify:fast; then
+  echo "✖ verify:fast failed. Fix the issues before committing."
+  exit 1
+fi
+exit 0

@@ -59,6 +59,16 @@ Run vet:
 go vet ./...
 ```
 
+Full verification harness (via `package.json` scripts):
+```bash
+pnpm verify:fast   # go build + vet + test + docs:check
+pnpm verify:all    # verify:fast + risk classification + BE↔FE cross-repo sync check
+```
+
+A pre-commit hook runs `pnpm verify:fast` automatically on commit. GitHub
+Actions CI runs build, vet, test, docs check, and risk classification on every
+push/PR.
+
 ## Documentation
 
 - [Documentation index](docs/README.md) - Architecture, API, database, conventions, development, infrastructure.

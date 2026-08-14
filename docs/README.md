@@ -16,15 +16,14 @@ in [API](api/overview.md).
 - [Conventions](conventions/coding.md) - Go style, module layout, error wrapping.
 - [Validation](conventions/validation.md) - Request validation, response envelope, exceptions.
 - [Database](database/schema.md) - PostgreSQL + Redis persistence, migrations.
-- [Development](development/setup.md) - Setup, environment, commands.
-- [Infrastructure](infrastructure/deployment.md) - Docker, docker-compose, ports.
+- [Development](development/setup.md) - Setup, environment, commands, verification harness.
+- [Infrastructure](infrastructure/deployment.md) - Docker, docker-compose, ports, CI/CD.
 
 ## Planned, not yet implemented
 
 The following are intentionally not described as implemented:
 
-- Automated `docs:check` validation script (like the frontend repo) - not yet added.
-- CI/CD pipeline - not configured.
+- Task-state management (`task:begin`/`task:verify`/`task:handoff`) - not yet added.
 - Additional modules beyond `auth` and `health`.
 
 When a planned capability is shipped, promote only its durable decisions into

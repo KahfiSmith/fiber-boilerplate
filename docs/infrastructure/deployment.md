@@ -42,7 +42,22 @@ The frontend `NEXT_PUBLIC_BACKEND_API_URL` must point at the active run mode
 (`http://localhost:8080` host, or `http://localhost:3000` compose). The backend
 `FRONTEND_ORIGIN` must allow the frontend origin (`http://localhost:3000`).
 
+## CI/CD
+
+CI is configured via `.github/workflows/ci.yml` and runs on every push/PR:
+
+1. `go build ./...`
+2. `go vet ./...`
+3. `go test ./...`
+4. Docs validation (`node ./scripts/harness/check-docs.mjs`)
+5. Risk classification (`pnpm verify:risk`)
+
+### Cross-repo check
+
+`pnpm verify:cross-repo` validates BE↔FE sync locally (routes, error codes,
+doc links) against the sibling frontend repo. It is not run in CI by default;
+enable it by checking out the sibling repo in the workflow.
+
 ## Not implemented
 
-- CI/CD pipeline.
 - Container image registry / production deployment config.

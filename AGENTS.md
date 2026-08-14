@@ -61,6 +61,12 @@ This file defines how Codex should work in this repository so responses are cons
 - No stale references to moved packages/files.
 - New env keys added to `.env.example` when needed.
 - README updated when behavior/setup changes.
+- Run the verification harness before handoff:
+  - `pnpm verify:fast` (go build/vet/test + docs:check)
+  - `pnpm verify:risk` (classify change risk)
+  - `pnpm verify:cross-repo` (BE↔FE sync) when the change touches the API contract
+- Cross-repo: keep routes and error codes in sync with the frontend
+  (`nextjs-boilerplate` `src/lib/api/endpoints.ts` and `auth-error-codes.ts`).
 
 ## Response Pattern
 - Start with result first.

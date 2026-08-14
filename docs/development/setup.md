@@ -52,3 +52,18 @@ Compose overrides `APP_PORT=3000` and uses service names for DB/Redis.
    `{"success": true, ...}` with DB/Redis status.
 2. Register → login → refresh → me flow works against the frontend
    (`nextjs-boilerplate`).
+
+## Verification harness
+
+The repo ships a tiered verification harness (via `package.json` scripts):
+
+- `pnpm verify:fast` - `go build`, `go vet`, `go test`, and `docs:check`.
+- `pnpm verify` - same as `verify:fast`.
+- `pnpm verify:risk` - classify change risk by path (low/medium/high).
+- `pnpm verify:cross-repo` - validate BE↔FE sync (routes, error codes,
+  cross-repo doc links) against the sibling `nextjs-boilerplate` repo.
+- `pnpm verify:all` - everything above.
+
+A pre-commit hook (`.githooks/pre-commit`) runs `pnpm verify:fast`
+automatically. CI runs build/vet/test, docs check, and risk classification on
+every push/PR.
