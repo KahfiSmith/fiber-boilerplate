@@ -1,10 +1,12 @@
 # Fiber Boilerplate
 
-Backend starter built with Go, Fiber v3, PostgreSQL, and Redis.
+Backend starter built with Go, Fiber v3, PostgreSQL, and Redis. Serves the
+`nextjs-boilerplate` frontend.
 
 ## Development Setup
 
-- **Backend:** `http://localhost:8080` (`APP_PORT=8080`)
+- **Backend (host):** `http://localhost:8080` (`APP_PORT=8080`)
+- **Backend (docker-compose):** `http://localhost:3000` (compose overrides port)
 - **Frontend:** `http://localhost:3000` (`FRONTEND_ORIGIN=http://localhost:3000`)
 
 ## Tech Stack
@@ -56,3 +58,8 @@ Run vet:
 ```bash
 go vet ./...
 ```
+
+## Documentation
+
+- [Documentation index](docs/README.md) - Architecture, API, database, conventions, development, infrastructure.
+- Cross-repo contract with the frontend: see [API overview](docs/api/overview.md).

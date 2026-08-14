@@ -4,12 +4,13 @@
 This file defines how Codex should work in this repository so responses are consistent, practical, and production-minded.
 
 ## Source of Truth (Read First)
-- Architecture: `docs/architecture.md`
-- API reference: `docs/api.md`
-- Database notes: `docs/database.md`
-- Repository rules: `docs/rules.md`
-- Coding standards: `docs/coding-standards.md`
-- Implementation patterns: `docs/patterns.md`
+- Architecture: `docs/architecture/overview.md`
+- API reference: `docs/api/overview.md` (endpoints: `docs/api/authentication.md`)
+- Database notes: `docs/database/schema.md`
+- Repository rules: `docs/README.md`
+- Coding standards: `docs/conventions/coding.md`
+- Implementation patterns: `docs/conventions/validation.md`
+- Cross-repo: the frontend repo (`nextjs-boilerplate`) consumes this API; keep endpoint paths and error codes in sync with frontend `src/lib/api/endpoints.ts`.
 
 ## Core Behavior
 - Be concise, technical, and action-oriented.
