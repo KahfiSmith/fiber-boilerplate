@@ -281,6 +281,15 @@ func (s *AuthService) ResendVerification(req dto.ResendVerificationRequest) (str
 	return s.createVerificationToken(user.ID)
 }
 
+func (s *AuthService) GetCurrentUser(userID uint) (*types.User, error) {
+	user, err := s.repo.FindByID(userID)
+	if err != nil || user == nil {
+		return nil, exceptions.NotFound("User not found")
+	}
+
+	return user, nil
+}
+
 func (s *AuthService) DeleteAccount(userID uint, req dto.DeleteAccountRequest) error {
 	user, err := s.repo.FindByID(userID)
 	if err != nil || user == nil {

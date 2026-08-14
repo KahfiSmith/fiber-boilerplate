@@ -109,7 +109,7 @@ func createTestUser(t *testing.T, email, password string) types.User {
 
 func TestAuthFlow(t *testing.T) {
 	app, cfg := setupTestApp(t)
-	_ = createTestUser(t, "testauth@example.com", "Password123!")
+	testUser := createTestUser(t, "testauth@example.com", "Password123!")
 
 	t.Run("Foreign Origin Rejected", func(t *testing.T) {
 		req := httptest.NewRequest("POST", "/api/v1/auth/login", strings.NewReader(`{"email":"testauth@example.com","password":"Password123!"}`))
@@ -183,10 +183,33 @@ func TestAuthFlow(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("expected 200, got %d", resp.StatusCode)
 		}
+
+		body, _ := io.ReadAll(resp.Body)
+		var res map[string]interface{}
+		if err := json.Unmarshal(body, &res); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+
+		data, ok := res["data"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("expected profile data object, got %#v", res["data"])
+		}
+		if data["id"] != float64(testUser.ID) {
+			t.Fatalf("expected user id %d, got %#v", testUser.ID, data["id"])
+		}
+		if data["email"] != testUser.Email {
+			t.Fatalf("expected email %s, got %#v", testUser.Email, data["email"])
+		}
+		if data["role"] != testUser.Role {
+			t.Fatalf("expected role %s, got %#v", testUser.Role, data["role"])
+		}
+		if isVerified, ok := data["is_email_verified"].(bool); !ok || isVerified != testUser.IsEmailVerified {
+			t.Fatalf("expected is_email_verified=%v, got %#v", testUser.IsEmailVerified, data["is_email_verified"])
+		}
 	})
 
 	t.Run("Access Token Expired", func(t *testing.T) {
-		time.Sleep(2100 * time.Millisecond) 
+		time.Sleep(2100 * time.Millisecond)
 		req := httptest.NewRequest("GET", "/api/v1/auth/me", nil)
 		req.Header.Set("Authorization", "Bearer "+accessToken)
 		resp, _ := app.Test(req)

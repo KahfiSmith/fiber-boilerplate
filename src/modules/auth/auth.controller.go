@@ -188,6 +188,20 @@ func (c *AuthController) ResendVerification(ctx fiber.Ctx) error {
 	return response.Success(ctx, fiber.StatusOK, "Verification token generated successfully", resData)
 }
 
+func (c *AuthController) Me(ctx fiber.Ctx) error {
+	userID, ok := ctx.Locals("user_id").(uint)
+	if !ok || userID == 0 {
+		return response.HandleError(ctx, exceptions.Unauthorized("ACCESS_TOKEN_INVALID", "Unauthorized"))
+	}
+
+	user, err := c.service.GetCurrentUser(userID)
+	if err != nil {
+		return response.HandleError(ctx, err)
+	}
+
+	return response.Success(ctx, fiber.StatusOK, "User profile retrieved successfully", user)
+}
+
 func (c *AuthController) DeleteAccount(ctx fiber.Ctx) error {
 	userID, okUser := ctx.Locals("user_id").(uint)
 	if !okUser {
@@ -219,17 +233,5 @@ func RegisterRoutes(router fiber.Router, controller *AuthController, protected f
 	authGroup.Post("/resend-verification", originValidator, rateLimiter, controller.ResendVerification)
 
 	authGroup.Delete("/account", protected, controller.DeleteAccount)
-
-	authGroup.Get("/me", protected, func(c fiber.Ctx) error {
-		userID := c.Locals("user_id")
-		email := c.Locals("email")
-		role := c.Locals("role")
-		isVerified := c.Locals("is_email_verified")
-		return response.Success(c, fiber.StatusOK, "User profile retrieved successfully", fiber.Map{
-			"id":                userID,
-			"email":             email,
-			"role":              role,
-			"is_email_verified": isVerified,
-		})
-	})
+	authGroup.Get("/me", protected, controller.Me)
 }
