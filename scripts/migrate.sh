@@ -7,8 +7,6 @@ MIGRATIONS_DIR="$ROOT_DIR/db/migrations"
 
 if [[ -f "$ENV_FILE" ]]; then
   set -a
-  # Support CRLF .env files created on Windows.
-  # shellcheck disable=SC1090
   source <(sed 's/\r$//' "$ENV_FILE")
   set +a
 fi
@@ -46,15 +44,6 @@ ensure_psql() {
     echo "psql is required to run migrations" >&2
     exit 1
   fi
-}
-
-generate_swagger() {
-  if [[ "${GENERATE_SWAGGER_ON_MIGRATE:-true}" != "true" ]]; then
-    return
-  fi
-
-  echo "generating swagger docs"
-  "$ROOT_DIR/scripts/swagger-generate.sh"
 }
 
 psql_cmd() {
@@ -180,12 +169,10 @@ case "$ACTION" in
     ;;
   up)
     ensure_psql
-    generate_swagger
     run_up
     ;;
   down)
     ensure_psql
-    generate_swagger
     run_down
     ;;
   help|-h|--help)

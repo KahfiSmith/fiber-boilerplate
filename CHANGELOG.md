@@ -13,3 +13,6 @@ All notable changes to this project will be documented in this file.
 - Verification harness: `package.json` with `verify:fast`/`verify`/`verify:all` scripts, risk classification, and cross-repo sync check.
 - Pre-commit hook (`.githooks/pre-commit`) running `pnpm verify:fast`.
 - GitHub Actions CI (`.github/workflows/ci.yml`): build, vet, test, docs check, risk classification.
+- Feature documentation gate: new modules must be documented in `docs/features/<module>.md` (template enforced by `docs:check`).
+- API collection + environment template under `docs/openapi/` for testing the API (Postman v2.1 format).
+- Removed swagger artifacts (`docs/swagger.json`, `docs/swagger.yaml`, `scripts/swagger-generate.sh`) — the Postman collection replaces them as the API contract.

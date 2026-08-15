@@ -65,6 +65,8 @@ This file defines how Codex should work in this repository so responses are cons
   - `pnpm verify:fast` (go build/vet/test + docs:check)
   - `pnpm verify:risk` (classify change risk)
   - `pnpm verify:cross-repo` (BE↔FE sync) when the change touches the API contract
+- New modules under `src/modules/` MUST add `docs/features/<module>.md` from
+  `docs/features/_TEMPLATE.md` (the docs:check gate fails without it).
 - Cross-repo: keep routes and error codes in sync with the frontend
   (`nextjs-boilerplate` `src/lib/api/endpoints.ts` and `auth-error-codes.ts`).
 

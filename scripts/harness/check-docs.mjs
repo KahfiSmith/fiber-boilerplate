@@ -1,14 +1,3 @@
-#!/usr/bin/env node
-/**
- * docs:check (backend) — validates that docs/ stays in sync with the repo.
- *
- * Checks:
- *  1. Every markdown link inside docs/ resolves (external sibling-repo links skipped).
- *  2. Every `src/`, `cmd/`, `db/`, `scripts/` path referenced in docs exists.
- *  3. No references to the old flat doc files (docs/api.md, docs/rules.md, ...).
- *
- * Exit code is non-zero when any check fails.
- */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, dirname, relative, resolve } from "node:path";
 
@@ -35,7 +24,6 @@ function walk(dir) {
 
 const markdownFiles = walk(DOCS_DIR);
 
-// --- 1. markdown links resolve ---------------------------------------------
 const LINK_RE = /\]\(([^)]+\.md)(?:[^)]*)\)/g;
 
 function isExternal(targetPath) {
@@ -57,12 +45,9 @@ for (const file of markdownFiles) {
   }
 }
 
-// --- 2. src/cmd/db/scripts paths referenced in docs exist -------------------
 const PATH_RE = /`((?:src|cmd|db|scripts)\/[A-Za-z0-9_/.\-()*]+)`/g;
 const seen = new Set();
 
-// Paths that belong to the sibling frontend repo, referenced in cross-repo
-// docs. These are intentional and are not expected to exist in this repo.
 const EXTERNAL_PREFIXES = [
   "src/lib/api/",
   "src/store/",
@@ -90,7 +75,6 @@ for (const file of markdownFiles) {
   }
 }
 
-// --- 3. no stale flat-doc references ---------------------------------------
 const STALE = [
   "api.md",
   "architecture.md",
@@ -113,7 +97,24 @@ for (const file of markdownFiles) {
   }
 }
 
-// --- output -----------------------------------------------------------------
+const FEATURES_DIR = join(ROOT, "docs/features");
+const MODULES_DIR = join(ROOT, "src/modules");
+
+if (exists(MODULES_DIR)) {
+  for (const entry of readdirSync(MODULES_DIR)) {
+    const full = join(MODULES_DIR, entry);
+    const stat = statSync(full);
+    if (!stat.isDirectory()) continue;
+    const featureDoc = join(FEATURES_DIR, `${entry}.md`);
+    if (!exists(featureDoc)) {
+      errors.push(
+        `Feature "${entry}" has no docs/features/${entry}.md. ` +
+          `Create it from docs/features/_TEMPLATE.md before committing.`
+      );
+    }
+  }
+}
+
 for (const w of warnings) console.warn(`⚠  ${w}`);
 for (const e of errors) console.error(`✖  ${e}`);
 

@@ -36,7 +36,7 @@
 │           └── service/health.service.go  # DB + Redis status check
 ├── db/
 │   └── migrations/            # SQL migration .up/.down files
-├── scripts/                   # migrate.sh, migrate-status.sh, migrate-down.sh, swagger-generate.sh
+├── scripts/                   # migrate.sh, migrate-status.sh, migrate-down.sh
 ├── docs/                      # This documentation
 ├── Dockerfile
 ├── docker-compose.yml
@@ -61,4 +61,4 @@
 | `src/modules/auth` | Auth feature (controller/service/repo/dto/types) |
 | `src/modules/health` | Health check feature |
 | `db/migrations` | SQL migrations |
-| `scripts` | Migration + swagger scripts |
+| `scripts` | Migration scripts |

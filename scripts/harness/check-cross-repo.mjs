@@ -1,18 +1,3 @@
-#!/usr/bin/env node
-/**
- * verify:cross-repo (backend) — validates that this backend repo stays in sync
- * with the frontend repo (nextjs-boilerplate).
- *
- * Checks:
- *  1. BE auth routes (src/modules/auth/auth.controller.go) match FE endpoint
- *     paths (src/lib/api/endpoints.ts).
- *  2. BE error codes are known to the FE error-code map
- *     (src/lib/api/auth-error-codes.ts).
- *  3. Cross-repo doc links in this repo resolve to existing files in FE.
- *
- * The FE repo is expected at ../Frontend/nextjs-boilerplate (sibling layout).
- * Exit code is non-zero on any mismatch.
- */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 
@@ -64,7 +49,6 @@ if (!existsSync(FE_ROOT)) {
   }
 }
 
-// --- 2. BE codes known to FE -----------------------------------------------
 const beSources = [
   join(ROOT, "src/common/exceptions/exceptions.go"),
   join(ROOT, "src/common/middleware/auth.middleware.go"),
@@ -100,7 +84,6 @@ if (!feCodesRaw) {
   }
 }
 
-// --- 3. Cross-repo doc links resolve ----------------------------------------
 function walkMd(dir) {
   const out = [];
   if (!existsSync(dir)) return out;
@@ -128,7 +111,6 @@ for (const file of walkMd(join(ROOT, "docs"))) {
   }
 }
 
-// --- output -----------------------------------------------------------------
 for (const w of warnings) console.warn(`⚠  ${w}`);
 for (const e of errors) console.error(`✖  ${e}`);
 

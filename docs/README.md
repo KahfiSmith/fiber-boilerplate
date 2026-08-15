@@ -11,12 +11,15 @@ in [API](api/overview.md).
 ## Current sources of truth
 
 - [Architecture](architecture/overview.md) - System design, folder structure, run modes.
+- [ADRs](architecture/adr/README.md) - Architecture decision records.
 - [API](api/overview.md) - Backend contract, envelope, error codes, frontend relationship.
 - [Authentication](api/authentication.md) - Endpoints, token flow, cookie handling.
 - [Conventions](conventions/coding.md) - Go style, module layout, error wrapping.
 - [Validation](conventions/validation.md) - Request validation, response envelope, exceptions.
 - [Database](database/schema.md) - PostgreSQL + Redis persistence, migrations.
+- [Features](features/README.md) - Feature modules (authentication, health).
 - [Development](development/setup.md) - Setup, environment, commands, verification harness.
+- [API collections](openapi/collection.json) - Importable API collection + environment for testing.
 - [Infrastructure](infrastructure/deployment.md) - Docker, docker-compose, ports, CI/CD.
 
 ## Planned, not yet implemented

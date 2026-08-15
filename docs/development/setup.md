@@ -46,6 +46,30 @@ docker compose up --build
 
 Compose overrides `APP_PORT=3000` and uses service names for DB/Redis.
 
+## API collections
+
+A ready-to-import API collection ships in `docs/openapi/` (Postman v2.1
+format, importable by Postman, Insomnia, Bruno, and other API clients):
+
+- `collection.json` - all 11 endpoints (health + auth), with example bodies.
+- `environment.json` - environment template with `base_url` and `access_token`.
+
+### Import (Postman)
+
+1. Postman → **Import** → select `docs/openapi/collection.json`.
+2. Postman → **Import** → select `docs/openapi/environment.json`.
+3. Select the **Fiber Boilerplate (Local)** environment.
+
+### Usage notes
+
+- `{{base_url}}` defaults to `http://localhost:8080` (host mode). Switch to
+  `http://localhost:3000` when the API runs via docker-compose.
+- Run **Login** first: its response body contains `access_token`. Set the
+  `access_token` environment variable (or use the login test script) so the
+  protected requests (`me`, `delete-account`) work.
+- `AUTH_DEBUG_EXPOSE_OTP=true` is required to see verification/reset tokens in
+  responses for `register`, `forgot-password`, and `resend-verification`.
+
 ## Verify it works
 
 1. `GET http://localhost:<port>/api/v1/health` returns
@@ -67,3 +91,9 @@ The repo ships a tiered verification harness (via `package.json` scripts):
 A pre-commit hook (`.githooks/pre-commit`) runs `pnpm verify:fast`
 automatically. CI runs build/vet/test, docs check, and risk classification on
 every push/PR.
+
+## Feature docs
+
+Every module under `src/modules/` must have a feature doc in
+`docs/features/<module>.md` (template: `docs/features/_TEMPLATE.md`). The
+`docs:check` gate fails when a new module is not documented.

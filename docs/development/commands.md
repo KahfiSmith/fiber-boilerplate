@@ -23,10 +23,7 @@
 | `scripts/migrate-status.sh` | Show migration status |
 | `scripts/migrate-down.sh` | Roll back migrations |
 
-## Swagger
+## API collections
 
-| Command | Purpose |
-|---|---|
-| `scripts/swagger-generate.sh` | Regenerate swagger artifacts |
-
-Swagger artifacts live in `docs/swagger.yaml` / `docs/swagger.json`.
+The API contract for import lives in `docs/openapi/` (see
+[Developer Setup](./setup.md)).
