@@ -16,3 +16,4 @@ All notable changes to this project will be documented in this file.
 - Feature documentation gate: new modules must be documented in `docs/features/<module>.md` (template enforced by `docs:check`).
 - API collection + environment template under `docs/openapi/` for testing the API (Postman v2.1 format).
 - Removed swagger artifacts (`docs/swagger.json`, `docs/swagger.yaml`, `scripts/swagger-generate.sh`) — the Postman collection replaces them as the API contract.
+- Added `ROADMAP.md` and `docs/product/overview.md`.

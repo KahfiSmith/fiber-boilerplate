@@ -18,6 +18,8 @@ in [API](api/overview.md).
 - [Validation](conventions/validation.md) - Request validation, response envelope, exceptions.
 - [Database](database/schema.md) - PostgreSQL + Redis persistence, migrations.
 - [Features](features/README.md) - Feature modules (authentication, health).
+- [Product](product/overview.md) - Product vision and implemented surface.
+- [Roadmap](../../ROADMAP.md) - Planned work and build order.
 - [Development](development/setup.md) - Setup, environment, commands, verification harness.
 - [API collections](openapi/collection.json) - Importable API collection + environment for testing.
 - [Infrastructure](infrastructure/deployment.md) - Docker, docker-compose, ports, CI/CD.
