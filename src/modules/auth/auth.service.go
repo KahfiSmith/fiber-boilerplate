@@ -47,11 +47,12 @@ func (s *AuthService) Register(req dto.RegisterRequest) (types.User, string, err
 	if err != nil {
 		return types.User{}, "", fmt.Errorf("hash password: %w", err)
 	}
+	passwordHash := string(hashedPassword)
 
 	user := types.User{
 		Name:            strings.TrimSpace(req.Name),
 		Email:           cleanEmail,
-		PasswordHash:    string(hashedPassword),
+		PasswordHash:    &passwordHash,
 		Role:            "user",
 		IsEmailVerified: false,
 	}
@@ -73,7 +74,13 @@ func (s *AuthService) Login(req dto.AuthRequest, ip string, userAgent string) (d
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("INVALID_CREDENTIALS", "Invalid credentials")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+	if user.PasswordHash == nil {
+		// OAuth-only user (no password) — reject password login.
+		log.Printf("Security Event: Login failure for user_id %d - no password set", user.ID)
+		return dto.AuthResponse{}, "", exceptions.Unauthorized("INVALID_CREDENTIALS", "Invalid credentials")
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(req.Password)); err != nil {
 		log.Printf("Security Event: Login failure for user_id %d - password mismatch", user.ID)
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("INVALID_CREDENTIALS", "Invalid credentials")
 	}
@@ -296,7 +303,12 @@ func (s *AuthService) DeleteAccount(userID uint, req dto.DeleteAccountRequest) e
 		return exceptions.NotFound("User not found")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+	if user.PasswordHash == nil {
+		// OAuth-only user — password confirmation cannot be satisfied.
+		return exceptions.Unauthorized("INVALID_CREDENTIALS", "Invalid password confirmation")
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(req.Password)); err != nil {
 		return exceptions.Unauthorized("INVALID_CREDENTIALS", "Invalid password confirmation")
 	}
 

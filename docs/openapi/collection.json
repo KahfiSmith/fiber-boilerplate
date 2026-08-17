@@ -225,6 +225,38 @@
             "description": "Return the current user profile. Requires Bearer access token. Protected."
           },
           "response": []
+        },
+        {
+          "name": "Google OAuth - Start",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/google",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "google"]
+            },
+            "description": "Start the Google OAuth flow. 302-redirects to Google's authorization page. Requires GOOGLE_ENABLED=true."
+          },
+          "response": []
+        },
+        {
+          "name": "Google OAuth - Callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/google/callback?code=CODE&state=STATE",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "google", "callback"],
+              "query": [
+                { "key": "code", "value": "CODE" },
+                { "key": "state", "value": "STATE" }
+              ]
+            },
+            "description": "Google OAuth callback (browser-redirect flow, normally not called manually). Exchanges the code, sets the refresh cookie, redirects to the frontend."
+          },
+          "response": []
         }
       ]
     }

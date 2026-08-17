@@ -13,14 +13,16 @@ import (
 )
 
 type AuthController struct {
-	service *AuthService
-	cfg     config.AuthConfig
+	service      *AuthService
+	oauthService *OAuthService
+	cfg          config.AuthConfig
 }
 
-func NewAuthController(service *AuthService, cfg config.AuthConfig) *AuthController {
+func NewAuthController(service *AuthService, oauthService *OAuthService, cfg config.AuthConfig) *AuthController {
 	return &AuthController{
-		service: service,
-		cfg:     cfg,
+		service:      service,
+		oauthService: oauthService,
+		cfg:          cfg,
 	}
 }
 
@@ -221,6 +223,46 @@ func (c *AuthController) DeleteAccount(ctx fiber.Ctx) error {
 	return response.Success(ctx, fiber.StatusOK, "Account deleted successfully", nil)
 }
 
+func (c *AuthController) GoogleLogin(ctx fiber.Ctx) error {
+	if c.oauthService == nil || !c.oauthService.Enabled() {
+		return response.HandleError(ctx, exceptions.BadRequest("Google OAuth is not enabled"))
+	}
+
+	state, err := c.oauthService.NewState(ctx.Context())
+	if err != nil {
+		return response.HandleError(ctx, err)
+	}
+
+	authURL, err := c.oauthService.AuthURL(state)
+	if err != nil {
+		return response.HandleError(ctx, err)
+	}
+
+	return ctx.Redirect().To(authURL)
+}
+
+func (c *AuthController) GoogleCallback(ctx fiber.Ctx) error {
+	if c.oauthService == nil || !c.oauthService.Enabled() {
+		return response.HandleError(ctx, exceptions.BadRequest("Google OAuth is not enabled"))
+	}
+
+	code := ctx.Query("code")
+	state := ctx.Query("state")
+	if err := c.oauthService.ConsumeState(ctx.Context(), state); err != nil {
+		return response.HandleError(ctx, err)
+	}
+
+	_, refreshToken, err := c.oauthService.HandleCallback(ctx.Context(), code)
+	if err != nil {
+		return response.HandleError(ctx, err)
+	}
+
+	c.setRefreshCookie(ctx, refreshToken, time.Now().Add(c.cfg.RefreshTokenTTL))
+
+	// Redirect back to the frontend; SessionProvider will bootstrap via /refresh.
+	return ctx.Redirect().To(c.cfg.FrontendOrigin)
+}
+
 func RegisterRoutes(router fiber.Router, controller *AuthController, protected fiber.Handler, rateLimiter fiber.Handler, originValidator fiber.Handler) {
 	authGroup := router.Group("/auth")
 	authGroup.Post("/login", originValidator, rateLimiter, controller.Login)
@@ -231,6 +273,10 @@ func RegisterRoutes(router fiber.Router, controller *AuthController, protected f
 	authGroup.Post("/reset-password", originValidator, rateLimiter, controller.ResetPassword)
 	authGroup.Post("/verify-email", originValidator, rateLimiter, controller.VerifyEmail)
 	authGroup.Post("/resend-verification", originValidator, rateLimiter, controller.ResendVerification)
+
+	// Google OAuth (browser redirect flow; no body, no Bearer).
+	authGroup.Get("/google", originValidator, controller.GoogleLogin)
+	authGroup.Get("/google/callback", originValidator, controller.GoogleCallback)
 
 	authGroup.Delete("/account", protected, controller.DeleteAccount)
 	authGroup.Get("/me", protected, controller.Me)

@@ -58,7 +58,8 @@ func main() {
 	authRepo := auth.NewAuthRepository()
 	refreshRepo := auth.NewRefreshRepository()
 	authService := auth.NewAuthService(authRepo, refreshRepo, tokenService, cfg.Auth)
-	authController := auth.NewAuthController(authService, cfg.Auth)
+	oauthService := auth.NewOAuthService(cfg.OAuth, cfg.Auth, authRepo, refreshRepo, tokenService)
+	authController := auth.NewAuthController(authService, oauthService, cfg.Auth)
 
 	server.RegisterRoutes(app, server.Dependencies{
 		HealthController: healthController,

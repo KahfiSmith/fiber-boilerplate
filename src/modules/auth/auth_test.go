@@ -82,7 +82,8 @@ func setupTestApp(t *testing.T) (*fiber.App, config.AuthConfig) {
 	authRepo := auth.NewAuthRepository()
 	refreshRepo := auth.NewRefreshRepository()
 	authService := auth.NewAuthService(authRepo, refreshRepo, tokenService, cfg)
-	authController := auth.NewAuthController(authService, cfg)
+	oauthService := auth.NewOAuthService(config.OAuthConfig{}, cfg, authRepo, refreshRepo, tokenService)
+	authController := auth.NewAuthController(authService, oauthService, cfg)
 
 	protected := middleware.Protected(cfg)
 	originValidator := middleware.ValidateOrigin(cfg)
@@ -96,10 +97,11 @@ func setupTestApp(t *testing.T) (*fiber.App, config.AuthConfig) {
 
 func createTestUser(t *testing.T, email, password string) types.User {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
+	passwordHash := string(hashedPassword)
 	user := types.User{
 		Name:         "Test User",
 		Email:        email,
-		PasswordHash: string(hashedPassword),
+		PasswordHash: &passwordHash,
 		Role:         "user",
 	}
 	database.DB.Where("LOWER(email) = LOWER(?)", email).Delete(&types.User{})

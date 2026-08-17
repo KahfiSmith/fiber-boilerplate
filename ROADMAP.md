@@ -19,6 +19,9 @@
       rotation + reuse detection), logout, forgot-password, reset-password,
       verify-email, resend-verification, delete-account, me — see
       `docs/features/auth.md`
+- [x] Google SSO (OIDC, backend-first) — `GET /auth/google` +
+      `/auth/google/callback`, auto-create user, disabled by default — see
+      `docs/api/authentication.md`
 - [x] Health check (`GET /api/v1/health`, DB + Redis status) — see
       `docs/features/health.md`
 
@@ -42,7 +45,7 @@
 ## Candidate (not committed)
 
 - RBAC beyond the existing `RequireRole` helper (role-based route guards).
-- Password-less login (OIDC / magic link).
+- Additional OAuth providers (GitHub, etc.) — the Google flow generalizes.
 - Account lockout / brute-force protection beyond the per-IP rate limiter.
 - Audit log for security events.
 

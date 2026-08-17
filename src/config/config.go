@@ -13,6 +13,7 @@ type Config struct {
 	DB    DBConfig
 	Redis RedisConfig
 	Auth  AuthConfig
+	OAuth OAuthConfig
 	Fiber FiberConfig
 }
 
@@ -81,6 +82,16 @@ type FiberConfig struct {
 	BodyLimit     int           `mapstructure:"body_limit" validate:"required,min=1"`
 	EnableMetrics bool          `mapstructure:"enable_metrics"`
 	EnablePprof   bool          `mapstructure:"enable_pprof"`
+}
+
+// OAuthConfig holds Google OIDC settings. Nothing is required so the feature
+// can be disabled (GOOGLE_ENABLED=false) without breaking startup.
+type OAuthConfig struct {
+	GoogleEnabled      bool   `mapstructure:"google_enabled"`
+	GoogleClientID     string `mapstructure:"google_client_id"`
+	GoogleClientSecret string `mapstructure:"google_client_secret"`
+	GoogleRedirectURL  string `mapstructure:"google_redirect_url"`
+	GoogleDiscoveryURL string `mapstructure:"google_discovery_url"`
 }
 
 func Load() (Config, error) {

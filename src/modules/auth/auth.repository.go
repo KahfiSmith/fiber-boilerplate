@@ -23,6 +23,16 @@ func (r *AuthRepository) FindByEmail(email string) (*types.User, error) {
 	return &user, nil
 }
 
+func (r *AuthRepository) FindByOAuth(provider string, subject string) (*types.User, error) {
+	var user types.User
+	if err := database.DB.
+		Where("oauth_provider = ? AND oauth_subject = ?", provider, subject).
+		First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r *AuthRepository) UpdatePassword(userID uint, passwordHash string) error {
 	return database.DB.Model(&types.User{}).Where("id = ?", userID).Update("password_hash", passwordHash).Error
 }

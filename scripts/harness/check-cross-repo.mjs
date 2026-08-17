@@ -37,7 +37,11 @@ if (!existsSync(FE_ROOT)) {
       [...fe.matchAll(/"(\/api\/v1\/auth\/[a-z-]+)"/g)].map((m) => m[1])
     );
 
-    const beOnly = [...beRoutes].filter((p) => !feEndpoints.has(p));
+    // Browser-navigation routes (Google OAuth redirect) are intentionally not
+    // in FE endpoints.ts — the FE calls them via page navigation, not axios.
+    const beOnly = [...beRoutes]
+      .filter((p) => !p.includes("/google"))
+      .filter((p) => !feEndpoints.has(p));
     const feOnly = [...feEndpoints].filter((p) => !beRoutes.has(p));
 
     if (beOnly.length) {

@@ -17,3 +17,4 @@ All notable changes to this project will be documented in this file.
 - API collection + environment template under `docs/openapi/` for testing the API (Postman v2.1 format).
 - Removed swagger artifacts (`docs/swagger.json`, `docs/swagger.yaml`, `scripts/swagger-generate.sh`) — the Postman collection replaces them as the API contract.
 - Added `ROADMAP.md` and `docs/product/overview.md`.
+- Google SSO (OIDC, backend-first): `GET /auth/google` + `/auth/google/callback`, auto-create OAuth users, `password_hash` nullable + `oauth_provider`/`oauth_subject` columns (migration 000006). Disabled by default (`GOOGLE_ENABLED=false`).
