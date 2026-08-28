@@ -116,6 +116,7 @@ func (c *AuthController) Logout(ctx fiber.Ctx) error {
 	refreshToken := ctx.Cookies(c.cfg.CookieName)
 
 	if refreshToken != "" {
+		// Logout is idempotent: ignore backend errors and clear cookie anyway.
 		_ = c.service.Logout(refreshToken)
 	}
 

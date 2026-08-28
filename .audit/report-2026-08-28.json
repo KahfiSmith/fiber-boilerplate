@@ -1,0 +1,68 @@
+{
+  "date": "2026-08-28",
+  "commit": "fee5050",
+  "verdict": "🟢 PASS",
+  "scripts": [
+    {
+      "name": "go build",
+      "status": "pass",
+      "blocking": true,
+      "duration_ms": 1131,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "go vet",
+      "status": "pass",
+      "blocking": true,
+      "duration_ms": 122,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "go test",
+      "status": "pass",
+      "blocking": true,
+      "duration_ms": 106,
+      "stdout": "?   \tfiber-boilerplate/cmd/api\t[no test files]\n?   \tfiber-boilerplate/src/common/exceptions\t[no test files]\nok  \tfiber-boilerplate/src/common/jwt\t(cached)\n?   \tfiber-boilerplate/src/common/logger\t[no test files]\n?   \tfiber-boilerplate/src/common/middleware\t[no test files]\n?   \tfiber-boilerplate/src/common/redis\t[no test files]\n?   \tfiber-boilerplate/src/common/response\t[no test files]\n?   \tfiber-boilerplate/src/common/server\t[no test files]\n?   \tfiber-boilerplate/src/common/validator\t[no test files]\n?   \tfiber-boilerplate/src/config\t[no test files]\n?   \tfiber-boilerplate/src/database\t[no test files]\nok  \tfiber-boilerplate/src/modules/auth\t(cached)\n?   \tfiber-boilerplate/src/modules/auth/dto\t[no test files]\n?   \tfiber-boilerplate/src/modules/auth/types\t[no test files]\n?   \tfiber-boilerplate/src/modules/health\t[no test files]\n?   \tfiber-boilerplate/src/modules/health/controller\t[no test files]\nok  \tfiber-boilerplate/src/modules/health/service\t(cached)\n",
+      "stderr": ""
+    },
+    {
+      "name": "docs:check",
+      "status": "pass",
+      "blocking": true,
+      "duration_ms": 258,
+      "stdout": "\n> fiber-boilerplate-harness@0.1.0 docs:check /home/kahfismith/Kahfi/Project/Backend/fiber-boilerplate\n> node ./scripts/harness/check-docs.mjs\n\ndocs:check OK — 24 files, 0 warning(s).\n",
+      "stderr": ""
+    },
+    {
+      "name": "verify:risk",
+      "status": "pass",
+      "blocking": false,
+      "duration_ms": 263,
+      "stdout": "\n> fiber-boilerplate-harness@0.1.0 verify:risk /home/kahfismith/Kahfi/Project/Backend/fiber-boilerplate\n> node ./scripts/harness/check-risk.mjs\n\nrisk: high\nchanged: 19 path(s)\n  [low] AGENTS.md\n  [low] CHANGELOG.md\n  [high] package.json\n  [high] src/config/config.go\n  [high] src/modules/auth/auth.controller.go\n  [high] src/modules/auth/auth.repository.go\n  [high] src/modules/auth/auth.service.go\n  [high] src/modules/auth/refresh.repository.go\n  [high] src/modules/auth/types/auth.type.go\n  [medium] .audit/report-2026-08-28.json\n  [low] .audit/report-2026-08-28.md\n  [low] docs/auditing/SELF_AUDIT.md\n  [low] docs/auditing/agent-instructions.md\n  [low] docs/auditing/automated-checks.md\n  [low] docs/auditing/checklist-template.md\n  [low] docs/auditing/overview.md\n  [high] scripts/harness/audit-report.mjs\n  [high] scripts/harness/check-self-audit.mjs\n  [medium] src/modules/health/service/health_service_test.go\n",
+      "stderr": ""
+    },
+    {
+      "name": "verify:cross-repo",
+      "status": "pass",
+      "blocking": true,
+      "duration_ms": 262,
+      "stdout": "\n> fiber-boilerplate-harness@0.1.0 verify:cross-repo /home/kahfismith/Kahfi/Project/Backend/fiber-boilerplate\n> node ./scripts/harness/check-cross-repo.mjs\n\nverify:cross-repo OK — BE↔FE in sync (0 warning(s)).\n",
+      "stderr": ""
+    },
+    {
+      "name": "verify:audit",
+      "status": "pass",
+      "blocking": true,
+      "duration_ms": 276,
+      "stdout": "\n> fiber-boilerplate-harness@0.1.0 verify:audit /home/kahfismith/Kahfi/Project/Backend/fiber-boilerplate\n> node ./scripts/harness/check-self-audit.mjs\n\n\nverify:audit: 0 error(s), 3 warning(s), 3 total\nverify:audit OK.\n",
+      "stderr": ""
+    }
+  ],
+  "totals": {
+    "errors": 0,
+    "warnings": 0,
+    "failed_blocking": 0
+  }
+}

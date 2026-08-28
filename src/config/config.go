@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
 )
 
@@ -109,6 +110,24 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("unmarshal config: %w", err)
 	}
 
+	// Run validator tags declared on the Config struct (validate:"required,min=32", etc.).
+	// Without this call, all tags are inert and misconfiguration passes silently.
+	if err := validator.New().Struct(&cfg); err != nil {
+		return Config{}, fmt.Errorf("config validation: %w", err)
+	}
+
+	// In production, reject placeholder secrets copied verbatim from .env.example.
+	// Without this, a deploy that forgets to override JWT_ACCESS_SECRET would
+	// accept forged tokens.
+	if cfg.App.Env == "production" {
+		if isPlaceholderSecret(cfg.Auth.JWTAccessSecret) {
+			return Config{}, fmt.Errorf("JWT_ACCESS_SECRET is still a placeholder; generate a real secret for production")
+		}
+		if isPlaceholderSecret(cfg.Auth.RefreshTokenHMACKey) {
+			return Config{}, fmt.Errorf("REFRESH_TOKEN_HMAC_KEY is still a placeholder; generate a real key for production")
+		}
+	}
+
 	// Support REDIS_ADDR=host:port as a convenience over REDIS_HOST+REDIS_PORT.
 	if addr := viper.GetString("redis_addr"); addr != "" {
 		if host, port, ok := splitHostPort(addr); ok {
@@ -122,6 +141,10 @@ func Load() (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func isPlaceholderSecret(s string) bool {
+	return strings.Contains(s, "replace-with")
 }
 
 func splitHostPort(addr string) (string, int, bool) {

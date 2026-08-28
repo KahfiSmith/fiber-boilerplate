@@ -63,12 +63,24 @@ This file defines how Codex should work in this repository so responses are cons
 - README updated when behavior/setup changes.
 - Run the verification harness before handoff:
   - `pnpm verify:fast` (go build/vet/test + docs:check)
+  - `pnpm verify:audit` (internal consistency: naming, Go hygiene, env, architecture, security, migration drift, dead code, test coverage)
   - `pnpm verify:risk` (classify change risk)
   - `pnpm verify:cross-repo` (BE↔FE sync) when the change touches the API contract
+  - `pnpm audit:report` to produce `.audit/report-YYYY-MM-DD.{json,md}` for trend tracking
 - New modules under `src/modules/` MUST add `docs/features/<module>.md` from
   `docs/features/_TEMPLATE.md` (the docs:check gate fails without it).
 - Cross-repo: keep routes and error codes in sync with the frontend
   (`nextjs-boilerplate` `src/lib/api/endpoints.ts` and `auth-error-codes.ts`).
+
+## Self-Audit (drift prevention)
+
+Before declaring a feature "done" or merging a non-trivial PR, the changes
+must pass `pnpm verify:audit` (machine-enforced) and the relevant items in
+[`docs/auditing/SELF_AUDIT.md`](docs/auditing/SELF_AUDIT.md) (manual). For a
+**deep audit** (quarterly, post-refactor, suspected drift), follow the
+workflow in [`docs/auditing/agent-instructions.md`](docs/auditing/agent-instructions.md).
+The master checklist is the source of truth for "is this repo healthy?";
+treat its items as a contract.
 
 ## Response Pattern
 - Start with result first.

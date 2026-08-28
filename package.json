@@ -4,10 +4,13 @@
   "private": true,
   "description": "Verification harness scripts for the fiber-boilerplate backend (no runtime deps).",
   "scripts": {
-    "verify:fast": "go build ./... && go vet ./... && go test ./... && node ./scripts/harness/check-docs.mjs",
+    "docs:check": "node ./scripts/harness/check-docs.mjs",
+    "verify:fast": "go build ./... && go vet ./... && go test ./... && pnpm docs:check",
     "verify": "pnpm verify:fast",
     "verify:risk": "node ./scripts/harness/check-risk.mjs",
     "verify:cross-repo": "node ./scripts/harness/check-cross-repo.mjs",
-    "verify:all": "pnpm verify && pnpm verify:risk && pnpm verify:cross-repo"
+    "verify:audit": "node ./scripts/harness/check-self-audit.mjs",
+    "audit:report": "node ./scripts/harness/audit-report.mjs",
+    "verify:all": "pnpm verify && pnpm verify:risk && pnpm verify:cross-repo && pnpm verify:audit"
   }
 }

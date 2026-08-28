@@ -183,6 +183,8 @@ func (s *AuthService) Refresh(rawRefreshToken string, ip string, userAgent strin
 
 	if rotRes.Status == "USED" {
 		slog.Error("refresh_token_reuse_detected", slog.String("token_hash", tokenHash))
+		// Best-effort revoke: the user is going to be told to re-login
+		// regardless, so a secondary failure here is acceptable.
 		_ = s.refreshRepo.RevokeSessionByTokenHash(ctx, tokenHash, "refresh_token_reuse")
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("REFRESH_TOKEN_REUSED", "Session is no longer valid. Please log in again.")
 	}
@@ -283,6 +285,14 @@ func (s *AuthService) ResetPassword(req dto.ResetPasswordRequest) error {
 	}
 
 	redisclient.Client.Del(ctx, key)
+
+	// Revoke all other sessions: prevents session persistence on stolen
+	// devices after a password reset.
+	if err := s.refreshRepo.RevokeAllByUserID(ctx, userID, "password_reset"); err != nil {
+		slog.Warn("password_reset_revoke_failed", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
+		// Don't fail the operation — password is already changed.
+	}
+
 	slog.Info("password_reset_success", slog.Uint64("user_id", uint64(userID)))
 
 	return nil
@@ -336,6 +346,8 @@ func (s *AuthService) GetCurrentUser(userID uint) (*types.User, error) {
 }
 
 func (s *AuthService) DeleteAccount(userID uint, req dto.DeleteAccountRequest) error {
+	ctx := context.Background()
+
 	user, err := s.repo.FindByID(userID)
 	if err != nil || user == nil {
 		return exceptions.NotFound("User not found")
@@ -351,6 +363,12 @@ func (s *AuthService) DeleteAccount(userID uint, req dto.DeleteAccountRequest) e
 
 	if err := s.repo.Delete(userID); err != nil {
 		return fmt.Errorf("delete user account: %w", err)
+	}
+
+	// Revoke all sessions: account is gone, no point keeping tokens alive.
+	if err := s.refreshRepo.RevokeAllByUserID(ctx, userID, "account_deleted"); err != nil {
+		slog.Warn("delete_account_revoke_failed", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
+		// Don't fail — user row is already deleted.
 	}
 
 	slog.Info("account_deleted", slog.Uint64("user_id", uint64(userID)))

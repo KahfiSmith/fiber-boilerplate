@@ -1,14 +1,10 @@
 package types
 
-import (
-	"time"
-
-	"github.com/golang-jwt/jwt/v5"
-)
+import "time"
 
 type User struct {
 	ID              uint      `json:"id" gorm:"primarykey"`
-	Name            string    `json:"name" gorm:"type:varchar(255);not null" validate:"required,min=2"`
+	Name            string    `json:"name" gorm:"type:varchar(120);not null" validate:"required,min=2"`
 	Email           string    `json:"email" gorm:"type:varchar(255);uniqueIndex;not null" validate:"required,email"`
 	PasswordHash    *string   `json:"-" gorm:"type:varchar(255)"`
 	Role            string    `json:"role" gorm:"type:varchar(50);not null;default:'user'"`
@@ -17,13 +13,4 @@ type User struct {
 	OAuthSubject    *string   `json:"-" gorm:"type:varchar(255);index:idx_oauth_provider_subject,unique"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
-}
-
-type JwtPayload struct {
-	ID              uint   `json:"id"`
-	Email           string `json:"email"`
-	Role            string `json:"role"`
-	IsEmailVerified bool   `json:"is_email_verified"`
-	SessionID       string `json:"session_id,omitempty"`
-	jwt.RegisteredClaims
 }
