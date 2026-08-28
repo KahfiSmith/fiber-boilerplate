@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -107,5 +109,31 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("unmarshal config: %w", err)
 	}
 
+	// Support REDIS_ADDR=host:port as a convenience over REDIS_HOST+REDIS_PORT.
+	if addr := viper.GetString("redis_addr"); addr != "" {
+		if host, port, ok := splitHostPort(addr); ok {
+			if cfg.Redis.Host == "" {
+				cfg.Redis.Host = host
+			}
+			if cfg.Redis.Port == 0 {
+				cfg.Redis.Port = port
+			}
+		}
+	}
+
 	return cfg, nil
+}
+
+func splitHostPort(addr string) (string, int, bool) {
+	parts := strings.SplitN(addr, ":", 2)
+	if len(parts) != 2 {
+		return "", 0, false
+	}
+	host := strings.TrimSpace(parts[0])
+	portStr := strings.TrimSpace(parts[1])
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return "", 0, false
+	}
+	return host, port, true
 }

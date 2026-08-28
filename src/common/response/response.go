@@ -41,6 +41,7 @@ func HandleError(ctx fiber.Ctx, err error) error {
 	var fiberErr *fiber.Error
 	if errors.As(err, &fiberErr) {
 		statusCode = fiberErr.Code
+		codeStr = fiberErrorCode(statusCode)
 		errorResponse = fiberErr.Message
 	}
 
@@ -70,4 +71,25 @@ func HandleError(ctx fiber.Ctx, err error) error {
 
 func GlobalErrorHandler(ctx fiber.Ctx, err error) error {
 	return HandleError(ctx, err)
+}
+
+// fiberErrorCode maps a Fiber status code to the corresponding code string
+// so the frontend always receives a non-empty code field.
+func fiberErrorCode(status int) string {
+	switch status {
+	case fiber.StatusBadRequest:
+		return "BAD_REQUEST"
+	case fiber.StatusUnauthorized:
+		return "UNAUTHORIZED"
+	case fiber.StatusForbidden:
+		return "FORBIDDEN"
+	case fiber.StatusNotFound:
+		return "NOT_FOUND"
+	case fiber.StatusConflict:
+		return "CONFLICT"
+	case fiber.StatusTooManyRequests:
+		return "TOO_MANY_REQUESTS"
+	default:
+		return "INTERNAL_SERVER_ERROR"
+	}
 }

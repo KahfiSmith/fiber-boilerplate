@@ -79,19 +79,17 @@ func (c *AuthController) Register(ctx fiber.Ctx) error {
 		return response.HandleError(ctx, err)
 	}
 
-	user, token, err := c.service.Register(req)
+	ip := ctx.IP()
+	userAgent := ctx.Get("User-Agent")
+
+	res, refreshToken, err := c.service.RegisterWithSession(req, ip, userAgent)
 	if err != nil {
 		return response.HandleError(ctx, err)
 	}
 
-	resData := fiber.Map{
-		"user": user,
-	}
-	if c.cfg.DebugExposeOTP {
-		resData["verification_token"] = token
-	}
+	c.setRefreshCookie(ctx, refreshToken, time.Now().Add(c.cfg.RefreshTokenTTL))
 
-	return response.Success(ctx, fiber.StatusCreated, "User registered successfully", resData)
+	return response.Success(ctx, fiber.StatusCreated, "User registered successfully", res)
 }
 
 func (c *AuthController) Refresh(ctx fiber.Ctx) error {

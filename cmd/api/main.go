@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"fiber-boilerplate/src/common/jwt"
+	"fiber-boilerplate/src/common/logger"
 	"fiber-boilerplate/src/common/middleware"
 	"fiber-boilerplate/src/common/redis"
 	"fiber-boilerplate/src/common/response"
@@ -26,9 +27,13 @@ import (
 )
 
 func main() {
+	log := logger.New()
+	slog.SetDefault(log)
+
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		log.Error("failed to load config", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	database.Connect(cfg.DB)
@@ -45,11 +50,11 @@ func main() {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.Auth.FrontendOrigin},
 		AllowCredentials: true,
-		AllowHeaders:     []string{"Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowHeaders:     []string{"Authorization", "Content-Type"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 	}))
 
-	app.Use(middleware.Logger())
+	app.Use(middleware.Logger(log))
 
 	healthService := healthServicePkg.NewHealthService(cfg.App.Name)
 	healthController := healthControllerPkg.NewHealthController(healthService)
@@ -69,20 +74,22 @@ func main() {
 
 	go func() {
 		addr := fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port)
-		fmt.Printf("Server starting on %s\n", addr)
+		log.Info("server_starting", slog.String("addr", addr))
 		if err := app.Listen(addr); err != nil {
-			log.Fatalf("server exited: %v", err)
+			log.Error("server_exited", slog.Any("error", err))
+			os.Exit(1)
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
-	fmt.Println("\nGracefully shutting down server...")
+	log.Info("graceful_shutdown_started")
 
 	if err := app.Shutdown(); err != nil {
-		log.Fatalf("server forced to shutdown: %v", err)
+		log.Error("server_forced_shutdown", slog.Any("error", err))
+		os.Exit(1)
 	}
 
-	fmt.Println("Server was successful shutdown.")
+	log.Info("server_shutdown_complete")
 }

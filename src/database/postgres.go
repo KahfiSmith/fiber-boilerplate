@@ -2,7 +2,7 @@ package database
 
 import (
 	"fiber-boilerplate/src/config"
-	"log"
+	"log/slog"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -18,12 +18,14 @@ func Connect(cfg config.DBConfig) {
 		Logger: logger.Default.LogMode(logger.Info),
 	})
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		slog.Error("db_connect_failed", slog.Any("error", err))
+		return
 	}
 
 	sqlDB, err := DB.DB()
 	if err != nil {
-		log.Fatalf("Failed to get sql db: %v", err)
+		slog.Error("db_sql_handle_failed", slog.Any("error", err))
+		return
 	}
 
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
@@ -31,5 +33,5 @@ func Connect(cfg config.DBConfig) {
 	sqlDB.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 	sqlDB.SetConnMaxIdleTime(cfg.ConnMaxIdleTime)
 
-	log.Println("Database connected successfully")
+	slog.Info("database_connected")
 }

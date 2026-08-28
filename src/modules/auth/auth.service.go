@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -36,16 +36,16 @@ func NewAuthService(repo *AuthRepository, refreshRepo *RefreshRepository, tokenS
 	}
 }
 
-func (s *AuthService) Register(req dto.RegisterRequest) (types.User, string, error) {
+func (s *AuthService) RegisterWithSession(req dto.RegisterRequest, ip string, userAgent string) (dto.AuthResponse, string, error) {
 	cleanEmail := strings.ToLower(strings.TrimSpace(req.Email))
 	exists, _ := s.repo.FindByEmail(cleanEmail)
 	if exists != nil {
-		return types.User{}, "", exceptions.BadRequest("Email already in use")
+		return dto.AuthResponse{}, "", exceptions.BadRequest("Email already in use")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), s.cfg.BcryptCost)
 	if err != nil {
-		return types.User{}, "", fmt.Errorf("hash password: %w", err)
+		return dto.AuthResponse{}, "", fmt.Errorf("hash password: %w", err)
 	}
 	passwordHash := string(hashedPassword)
 
@@ -58,30 +58,68 @@ func (s *AuthService) Register(req dto.RegisterRequest) (types.User, string, err
 	}
 
 	if err := s.repo.Create(&user); err != nil {
-		return types.User{}, "", fmt.Errorf("create user: %w", err)
+		return dto.AuthResponse{}, "", fmt.Errorf("create user: %w", err)
 	}
 
-	verifyToken, _ := s.createVerificationToken(user.ID)
+	_, _ = s.createVerificationToken(user.ID)
 
-	return user, verifyToken, nil
+	sessionID := uuid.New().String()
+	familyID := uuid.New().String()
+
+	accessToken, _, err := s.tokenService.GenerateAccessToken(user.ID, user.Email, user.Role, sessionID)
+	if err != nil {
+		return dto.AuthResponse{}, "", fmt.Errorf("generate access token: %w", err)
+	}
+
+	rawRefreshToken, err := generateRefreshToken()
+	if err != nil {
+		return dto.AuthResponse{}, "", fmt.Errorf("generate refresh token: %w", err)
+	}
+
+	tokenHash := hashRefreshToken(rawRefreshToken, s.cfg.RefreshTokenHMACKey)
+
+	now := time.Now()
+	meta := SessionMetadata{
+		SessionID:        sessionID,
+		FamilyID:         familyID,
+		UserID:           user.ID,
+		CurrentTokenHash: tokenHash,
+		IssuedAt:         now,
+		ExpiresAt:        now.Add(s.cfg.RefreshTokenTTL),
+		LastUsedAt:       now,
+		IPAddress:        ip,
+		UserAgent:        userAgent,
+	}
+
+	ctx := context.Background()
+	if err := s.refreshRepo.CreateSession(ctx, meta, s.cfg.RefreshTokenTTL); err != nil {
+		return dto.AuthResponse{}, "", fmt.Errorf("create redis session: %w", err)
+	}
+
+	slog.Info("register_success", slog.Uint64("user_id", uint64(user.ID)), slog.String("session_id", sessionID))
+
+	return dto.AuthResponse{
+		AccessToken: accessToken,
+		ExpiresIn:   int(s.cfg.AccessTokenTTL.Seconds()),
+		User:        user,
+	}, rawRefreshToken, nil
 }
 
 func (s *AuthService) Login(req dto.AuthRequest, ip string, userAgent string) (dto.AuthResponse, string, error) {
 	cleanEmail := strings.ToLower(strings.TrimSpace(req.Email))
 	user, err := s.repo.FindByEmail(cleanEmail)
 	if err != nil || user == nil {
-		log.Printf("Security Event: Login failure for email %s - user not found", cleanEmail)
+		slog.Warn("login_failure_user_not_found", slog.String("email", cleanEmail))
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("INVALID_CREDENTIALS", "Invalid credentials")
 	}
 
 	if user.PasswordHash == nil {
-		// OAuth-only user (no password) — reject password login.
-		log.Printf("Security Event: Login failure for user_id %d - no password set", user.ID)
+		slog.Warn("login_failure_no_password", slog.Uint64("user_id", uint64(user.ID)))
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("INVALID_CREDENTIALS", "Invalid credentials")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(req.Password)); err != nil {
-		log.Printf("Security Event: Login failure for user_id %d - password mismatch", user.ID)
+		slog.Warn("login_failure_password_mismatch", slog.Uint64("user_id", uint64(user.ID)))
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("INVALID_CREDENTIALS", "Invalid credentials")
 	}
 
@@ -118,7 +156,7 @@ func (s *AuthService) Login(req dto.AuthRequest, ip string, userAgent string) (d
 		return dto.AuthResponse{}, "", fmt.Errorf("create redis session: %w", err)
 	}
 
-	log.Printf("Security Event: Login success for user_id=%d, session_id=%s, family_id=%s", user.ID, sessionID, familyID)
+	slog.Info("login_success", slog.Uint64("user_id", uint64(user.ID)), slog.String("session_id", sessionID), slog.String("family_id", familyID))
 
 	return dto.AuthResponse{
 		AccessToken: accessToken,
@@ -144,7 +182,7 @@ func (s *AuthService) Refresh(rawRefreshToken string, ip string, userAgent strin
 	}
 
 	if rotRes.Status == "USED" {
-		log.Printf("Security Event: Refresh token reuse detected! token_hash=%s", tokenHash)
+		slog.Error("refresh_token_reuse_detected", slog.String("token_hash", tokenHash))
 		_ = s.refreshRepo.RevokeSessionByTokenHash(ctx, tokenHash, "refresh_token_reuse")
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("REFRESH_TOKEN_REUSED", "Session is no longer valid. Please log in again.")
 	}
@@ -159,18 +197,18 @@ func (s *AuthService) Refresh(rawRefreshToken string, ip string, userAgent strin
 	}
 
 	if rotRes.Status == "REVOKED" || meta.RevokedAt != nil {
-		log.Printf("Security Event: Attempt to use token for revoked session session_id=%s", meta.SessionID)
+		slog.Warn("refresh_token_revoked_session", slog.String("session_id", meta.SessionID))
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("SESSION_REVOKED", "Session has been revoked")
 	}
 
 	if time.Now().After(meta.ExpiresAt) {
-		log.Printf("Security Event: Refresh token expired for session_id=%s", meta.SessionID)
+		slog.Warn("refresh_token_expired", slog.String("session_id", meta.SessionID))
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("REFRESH_TOKEN_EXPIRED", "Refresh token expired")
 	}
 
 	user, err := s.repo.FindByID(meta.UserID)
 	if err != nil || user == nil {
-		log.Printf("Security Event: User not found for session_id=%s", meta.SessionID)
+		slog.Warn("refresh_user_not_found", slog.String("session_id", meta.SessionID))
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("INVALID_CREDENTIALS", "User no longer exists")
 	}
 
@@ -179,7 +217,7 @@ func (s *AuthService) Refresh(rawRefreshToken string, ip string, userAgent strin
 		return dto.AuthResponse{}, "", fmt.Errorf("generate access token: %w", err)
 	}
 
-	log.Printf("Security Event: Refresh success for user_id=%d, session_id=%s", user.ID, meta.SessionID)
+	slog.Info("refresh_success", slog.Uint64("user_id", uint64(user.ID)), slog.String("session_id", meta.SessionID))
 
 	return dto.AuthResponse{
 		AccessToken: newAccessToken,
@@ -197,7 +235,7 @@ func (s *AuthService) Logout(rawRefreshToken string) error {
 	ctx := context.Background()
 
 	err := s.refreshRepo.RevokeSessionByTokenHash(ctx, tokenHash, "user_logout")
-	log.Printf("Security Event: User logout initiated for token_hash=%s", tokenHash)
+	slog.Info("logout", slog.String("token_hash", tokenHash))
 	return err
 }
 
@@ -245,7 +283,7 @@ func (s *AuthService) ResetPassword(req dto.ResetPasswordRequest) error {
 	}
 
 	redisclient.Client.Del(ctx, key)
-	log.Printf("Security Event: Password reset success for user_id=%d", userID)
+	slog.Info("password_reset_success", slog.Uint64("user_id", uint64(userID)))
 
 	return nil
 }
@@ -304,7 +342,6 @@ func (s *AuthService) DeleteAccount(userID uint, req dto.DeleteAccountRequest) e
 	}
 
 	if user.PasswordHash == nil {
-		// OAuth-only user — password confirmation cannot be satisfied.
 		return exceptions.Unauthorized("INVALID_CREDENTIALS", "Invalid password confirmation")
 	}
 
@@ -316,7 +353,7 @@ func (s *AuthService) DeleteAccount(userID uint, req dto.DeleteAccountRequest) e
 		return fmt.Errorf("delete user account: %w", err)
 	}
 
-	log.Printf("Security Event: Account deleted for user_id=%d", userID)
+	slog.Info("account_deleted", slog.Uint64("user_id", uint64(userID)))
 
 	return nil
 }

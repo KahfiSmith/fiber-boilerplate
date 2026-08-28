@@ -4,7 +4,7 @@ import (
 	"context"
 	"fiber-boilerplate/src/config"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -23,8 +23,9 @@ func Connect(cfg config.RedisConfig) {
 
 	ctx := context.Background()
 	if err := Client.Ping(ctx).Err(); err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		slog.Error("redis_connect_failed", slog.Any("error", err))
+		return
 	}
 
-	log.Println("Redis connected successfully")
+	slog.Info("redis_connected", slog.String("addr", fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)))
 }
