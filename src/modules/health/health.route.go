@@ -8,4 +8,6 @@ import (
 func RegisterRoutes(router fiber.Router, c *controller.HealthController) {
 	healthGroup := router.Group("/health")
 	healthGroup.Get("", c.Check)
+	healthGroup.Get("/ready", c.Ready)
+	healthGroup.Get("/live", c.Live)
 }

@@ -11,18 +11,21 @@ import (
 )
 
 type APIResponse struct {
-	Success bool        `json:"success"`
-	Code    string      `json:"code,omitempty"`
-	Message string      `json:"message,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
-	Error   interface{} `json:"error,omitempty"`
+	Success   bool        `json:"success"`
+	Code      string      `json:"code,omitempty"`
+	Message   string      `json:"message,omitempty"`
+	Data      interface{} `json:"data,omitempty"`
+	Error     interface{} `json:"error,omitempty"`
+	RequestID string      `json:"request_id,omitempty"`
 }
 
 func Success(ctx fiber.Ctx, status int, message string, data interface{}) error {
+	reqID := getRequestID(ctx)
 	return ctx.Status(status).JSON(APIResponse{
-		Success: true,
-		Message: message,
-		Data:    data,
+		Success:   true,
+		Message:   message,
+		Data:      data,
+		RequestID: reqID,
 	})
 }
 
@@ -61,16 +64,35 @@ func HandleError(ctx fiber.Ctx, err error) error {
 		msg = strErr
 	}
 
+	reqID := getRequestID(ctx)
+
 	return ctx.Status(statusCode).JSON(APIResponse{
-		Success: false,
-		Code:    codeStr,
-		Message: msg,
-		Error:   errorResponse,
+		Success:   false,
+		Code:      codeStr,
+		Message:   msg,
+		Error:     errorResponse,
+		RequestID: reqID,
 	})
 }
 
 func GlobalErrorHandler(ctx fiber.Ctx, err error) error {
 	return HandleError(ctx, err)
+}
+
+func getRequestID(ctx fiber.Ctx) string {
+	if ctx == nil {
+		return ""
+	}
+	if reqID := ctx.Get("X-Request-ID"); reqID != "" {
+		return reqID
+	}
+	if reqID := ctx.Response().Header.Peek("X-Request-ID"); len(reqID) > 0 {
+		return string(reqID)
+	}
+	if reqID, ok := ctx.Locals("requestid").(string); ok && reqID != "" {
+		return reqID
+	}
+	return ""
 }
 
 // fiberErrorCode maps a Fiber status code to the corresponding code string

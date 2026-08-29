@@ -9,8 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"fiber-boilerplate/src/common/audit"
 	"fiber-boilerplate/src/common/exceptions"
 	"fiber-boilerplate/src/common/jwt"
+	"fiber-boilerplate/src/common/mail"
 	redisclient "fiber-boilerplate/src/common/redis"
 	"fiber-boilerplate/src/config"
 	"fiber-boilerplate/src/modules/auth/dto"
@@ -24,14 +26,19 @@ type AuthService struct {
 	repo         *AuthRepository
 	refreshRepo  *RefreshRepository
 	tokenService *jwt.TokenService
+	mailer       mail.Mailer
 	cfg          config.AuthConfig
 }
 
-func NewAuthService(repo *AuthRepository, refreshRepo *RefreshRepository, tokenService *jwt.TokenService, cfg config.AuthConfig) *AuthService {
+func NewAuthService(repo *AuthRepository, refreshRepo *RefreshRepository, tokenService *jwt.TokenService, mailer mail.Mailer, cfg config.AuthConfig) *AuthService {
+	if mailer == nil {
+		mailer = mail.NewLogMailer("fiber-boilerplate")
+	}
 	return &AuthService{
 		repo:         repo,
 		refreshRepo:  refreshRepo,
 		tokenService: tokenService,
+		mailer:       mailer,
 		cfg:          cfg,
 	}
 }
@@ -109,16 +116,19 @@ func (s *AuthService) Login(req dto.AuthRequest, ip string, userAgent string) (d
 	cleanEmail := strings.ToLower(strings.TrimSpace(req.Email))
 	user, err := s.repo.FindByEmail(cleanEmail)
 	if err != nil || user == nil {
+		audit.LogEvent(audit.EventLoginFailed, 0, "", ip, userAgent, map[string]interface{}{"email": cleanEmail, "reason": "user_not_found"})
 		slog.Warn("login_failure_user_not_found", slog.String("email", cleanEmail))
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("INVALID_CREDENTIALS", "Invalid credentials")
 	}
 
 	if user.PasswordHash == nil {
+		audit.LogEvent(audit.EventLoginFailed, user.ID, "", ip, userAgent, map[string]interface{}{"reason": "no_password"})
 		slog.Warn("login_failure_no_password", slog.Uint64("user_id", uint64(user.ID)))
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("INVALID_CREDENTIALS", "Invalid credentials")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(req.Password)); err != nil {
+		audit.LogEvent(audit.EventLoginFailed, user.ID, "", ip, userAgent, map[string]interface{}{"reason": "password_mismatch"})
 		slog.Warn("login_failure_password_mismatch", slog.Uint64("user_id", uint64(user.ID)))
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("INVALID_CREDENTIALS", "Invalid credentials")
 	}
@@ -157,6 +167,7 @@ func (s *AuthService) Login(req dto.AuthRequest, ip string, userAgent string) (d
 	}
 
 	slog.Info("login_success", slog.Uint64("user_id", uint64(user.ID)), slog.String("session_id", sessionID), slog.String("family_id", familyID))
+	audit.LogEvent(audit.EventLoginSuccess, user.ID, sessionID, ip, userAgent, nil)
 
 	return dto.AuthResponse{
 		AccessToken: accessToken,
@@ -183,8 +194,7 @@ func (s *AuthService) Refresh(rawRefreshToken string, ip string, userAgent strin
 
 	if rotRes.Status == "USED" {
 		slog.Error("refresh_token_reuse_detected", slog.String("token_hash", tokenHash))
-		// Best-effort revoke: the user is going to be told to re-login
-		// regardless, so a secondary failure here is acceptable.
+		audit.LogEvent(audit.EventRefreshTokenReused, 0, "", ip, userAgent, map[string]interface{}{"token_hash": tokenHash})
 		_ = s.refreshRepo.RevokeSessionByTokenHash(ctx, tokenHash, "refresh_token_reuse")
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("REFRESH_TOKEN_REUSED", "Session is no longer valid. Please log in again.")
 	}
@@ -257,6 +267,8 @@ func (s *AuthService) ForgotPassword(req dto.ForgotPasswordRequest) (string, err
 		return "", fmt.Errorf("failed to store reset token: %w", err)
 	}
 
+	_ = s.mailer.SendPasswordReset(ctx, cleanEmail, resetToken)
+
 	return resetToken, nil
 }
 
@@ -286,14 +298,12 @@ func (s *AuthService) ResetPassword(req dto.ResetPasswordRequest) error {
 
 	redisclient.Client.Del(ctx, key)
 
-	// Revoke all other sessions: prevents session persistence on stolen
-	// devices after a password reset.
 	if err := s.refreshRepo.RevokeAllByUserID(ctx, userID, "password_reset"); err != nil {
 		slog.Warn("password_reset_revoke_failed", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
-		// Don't fail the operation — password is already changed.
 	}
 
 	slog.Info("password_reset_success", slog.Uint64("user_id", uint64(userID)))
+	audit.LogEvent(audit.EventPasswordResetCompleted, userID, "", "", "", nil)
 
 	return nil
 }
@@ -318,6 +328,7 @@ func (s *AuthService) VerifyEmail(req dto.VerifyEmailRequest) error {
 	}
 
 	redisclient.Client.Del(ctx, key)
+	audit.LogEvent(audit.EventEmailVerified, userID, "", "", "", nil)
 
 	return nil
 }
@@ -333,7 +344,11 @@ func (s *AuthService) ResendVerification(req dto.ResendVerificationRequest) (str
 		return "", exceptions.BadRequest("Email is already verified")
 	}
 
-	return s.createVerificationToken(user.ID)
+	tok, err := s.createVerificationToken(user.ID)
+	if err == nil {
+		_ = s.mailer.SendEmailVerification(context.Background(), cleanEmail, tok)
+	}
+	return tok, err
 }
 
 func (s *AuthService) GetCurrentUser(userID uint) (*types.User, error) {
@@ -365,15 +380,54 @@ func (s *AuthService) DeleteAccount(userID uint, req dto.DeleteAccountRequest) e
 		return fmt.Errorf("delete user account: %w", err)
 	}
 
-	// Revoke all sessions: account is gone, no point keeping tokens alive.
 	if err := s.refreshRepo.RevokeAllByUserID(ctx, userID, "account_deleted"); err != nil {
 		slog.Warn("delete_account_revoke_failed", slog.Uint64("user_id", uint64(userID)), slog.Any("error", err))
-		// Don't fail — user row is already deleted.
 	}
 
 	slog.Info("account_deleted", slog.Uint64("user_id", uint64(userID)))
+	audit.LogEvent(audit.EventAccountDeleted, userID, "", "", "", nil)
 
 	return nil
+}
+
+func (s *AuthService) ListSessions(userID uint, currentSessionID string) ([]dto.SessionResponse, error) {
+	ctx := context.Background()
+	sessions, err := s.refreshRepo.ListSessionsByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list sessions: %w", err)
+	}
+
+	var res []dto.SessionResponse
+	for _, sess := range sessions {
+		res = append(res, dto.SessionResponse{
+			SessionID:  sess.SessionID,
+			IssuedAt:   sess.IssuedAt.Format(time.RFC3339),
+			LastUsedAt: sess.LastUsedAt.Format(time.RFC3339),
+			ExpiresAt:  sess.ExpiresAt.Format(time.RFC3339),
+			IPAddress:  sess.IPAddress,
+			UserAgent:  sess.UserAgent,
+			Current:    sess.SessionID == currentSessionID,
+		})
+	}
+	return res, nil
+}
+
+func (s *AuthService) RevokeSession(userID uint, sessionID string) error {
+	ctx := context.Background()
+	sess, err := s.refreshRepo.GetSession(ctx, sessionID)
+	if err != nil || sess == nil {
+		return exceptions.NotFound("Session not found")
+	}
+	if sess.UserID != userID {
+		return exceptions.Forbidden("FORBIDDEN", "Not allowed to revoke this session")
+	}
+
+	return s.refreshRepo.RevokeSessionByID(ctx, sessionID, "user_revoked_session")
+}
+
+func (s *AuthService) RevokeAllOtherSessions(userID uint, currentSessionID string) error {
+	ctx := context.Background()
+	return s.refreshRepo.RevokeAllOtherSessions(ctx, userID, currentSessionID, "user_revoked_all_other_sessions")
 }
 
 func (s *AuthService) createVerificationToken(userID uint) (string, error) {

@@ -25,9 +25,6 @@ const (
 	oauthStateTTL       = 10 * time.Minute
 )
 
-// OAuthService handles the Google OIDC flow (authorization code pattern).
-// The backend owns all client secrets; the frontend only navigates to the
-// auth URL and is redirected back with a session cookie.
 type OAuthService struct {
 	cfg          config.OAuthConfig
 	authCfg      config.AuthConfig
@@ -48,7 +45,6 @@ func NewOAuthService(oauthCfg config.OAuthConfig, authCfg config.AuthConfig, rep
 	}
 }
 
-// Enabled reports whether Google OAuth is configured on.
 func (s *OAuthService) Enabled() bool {
 	return s.cfg.GoogleEnabled &&
 		s.cfg.GoogleClientID != "" &&
@@ -56,7 +52,6 @@ func (s *OAuthService) Enabled() bool {
 		s.cfg.GoogleRedirectURL != ""
 }
 
-// initProvider lazily discovers the OIDC provider and builds the oauth2 config.
 func (s *OAuthService) initProvider() error {
 	if s.provider != nil {
 		return nil
@@ -83,8 +78,6 @@ func (s *OAuthService) initProvider() error {
 	return nil
 }
 
-// NewState generates a random state value and stores it in Redis (short TTL)
-// so the callback can validate it (CSRF protection).
 func (s *OAuthService) NewState(ctx context.Context) (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -99,7 +92,6 @@ func (s *OAuthService) NewState(ctx context.Context) (string, error) {
 	return state, nil
 }
 
-// ConsumeState validates and deletes a state value (single use).
 func (s *OAuthService) ConsumeState(ctx context.Context, state string) error {
 	if state == "" {
 		return exceptions.BadRequest("Missing OAuth state")
@@ -115,7 +107,6 @@ func (s *OAuthService) ConsumeState(ctx context.Context, state string) error {
 	return nil
 }
 
-// AuthURL returns the Google authorization URL for the given state.
 func (s *OAuthService) AuthURL(state string) (string, error) {
 	if !s.Enabled() {
 		return "", exceptions.BadRequest("Google OAuth is not enabled")
@@ -126,8 +117,6 @@ func (s *OAuthService) AuthURL(state string) (string, error) {
 	return s.oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline), nil
 }
 
-// HandleCallback exchanges the authorization code for an identity, finds or
-// auto-creates the user, and issues a session (access token + refresh token).
 func (s *OAuthService) HandleCallback(ctx context.Context, code string) (dto.AuthResponse, string, error) {
 	if code == "" {
 		return dto.AuthResponse{}, "", exceptions.BadRequest("Missing authorization code")
@@ -164,7 +153,6 @@ func (s *OAuthService) HandleCallback(ctx context.Context, code string) (dto.Aut
 		return dto.AuthResponse{}, "", exceptions.Unauthorized("INVALID_OAUTH_TOKEN", "id_token missing sub or email")
 	}
 
-	// Find or auto-create the user by (provider, subject).
 	provider := "google"
 	user, err := s.repo.FindByOAuth(provider, claims.Sub)
 	if err != nil {
@@ -176,12 +164,11 @@ func (s *OAuthService) HandleCallback(ctx context.Context, code string) (dto.Aut
 			Email:           claims.Email,
 			PasswordHash:    nil,
 			Role:            "user",
-			IsEmailVerified: true, // Google emails are verified
+			IsEmailVerified: true,
 			OAuthProvider:   &provider,
 			OAuthSubject:    &claims.Sub,
 		}
 		if err := s.repo.Create(user); err != nil {
-			// Race: another request created the same user. Fall back to lookup.
 			user, err = s.repo.FindByOAuth(provider, claims.Sub)
 			if err != nil || user == nil {
 				return dto.AuthResponse{}, "", fmt.Errorf("create oauth user: %w", err)
@@ -192,8 +179,6 @@ func (s *OAuthService) HandleCallback(ctx context.Context, code string) (dto.Aut
 	return s.createSession(ctx, user, claims.Email)
 }
 
-// createSession mirrors the password-login session creation: a Redis session
-// family plus an access token and a raw refresh token for the cookie.
 func (s *OAuthService) createSession(ctx context.Context, user *types.User, email string) (dto.AuthResponse, string, error) {
 	sessionID := uuid.New().String()
 	familyID := uuid.New().String()
@@ -233,5 +218,4 @@ func (s *OAuthService) createSession(ctx context.Context, user *types.User, emai
 	}, rawRefreshToken, nil
 }
 
-// ErrOAuthNotEnabled is returned when Google OAuth is disabled.
 var ErrOAuthNotEnabled = errors.New("google oauth is not enabled")

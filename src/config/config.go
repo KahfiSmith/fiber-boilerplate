@@ -87,8 +87,6 @@ type FiberConfig struct {
 	EnablePprof   bool          `mapstructure:"enable_pprof"`
 }
 
-// OAuthConfig holds Google OIDC settings. Nothing is required so the feature
-// can be disabled (GOOGLE_ENABLED=false) without breaking startup.
 type OAuthConfig struct {
 	GoogleEnabled      bool   `mapstructure:"google_enabled"`
 	GoogleClientID     string `mapstructure:"google_client_id"`
@@ -110,15 +108,10 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("unmarshal config: %w", err)
 	}
 
-	// Run validator tags declared on the Config struct (validate:"required,min=32", etc.).
-	// Without this call, all tags are inert and misconfiguration passes silently.
 	if err := validator.New().Struct(&cfg); err != nil {
 		return Config{}, fmt.Errorf("config validation: %w", err)
 	}
 
-	// In production, reject placeholder secrets copied verbatim from .env.example.
-	// Without this, a deploy that forgets to override JWT_ACCESS_SECRET would
-	// accept forged tokens.
 	if cfg.App.Env == "production" {
 		if isPlaceholderSecret(cfg.Auth.JWTAccessSecret) {
 			return Config{}, fmt.Errorf("JWT_ACCESS_SECRET is still a placeholder; generate a real secret for production")
@@ -128,7 +121,6 @@ func Load() (Config, error) {
 		}
 	}
 
-	// Support REDIS_ADDR=host:port as a convenience over REDIS_HOST+REDIS_PORT.
 	if addr := viper.GetString("redis_addr"); addr != "" {
 		if host, port, ok := splitHostPort(addr); ok {
 			if cfg.Redis.Host == "" {

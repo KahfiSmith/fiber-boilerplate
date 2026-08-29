@@ -5,8 +5,6 @@ import (
 	"fiber-boilerplate/src/modules/auth/types"
 )
 
-// AuthRepository handles persistence for the User entity (Postgres via GORM).
-// All session/refresh-token storage lives in RefreshRepository (Redis).
 type AuthRepository struct{}
 
 func NewAuthRepository() *AuthRepository {

@@ -11,9 +11,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// SessionMetadata is the JSON value stored at auth:session:<session_id> in
-// Redis. It carries everything needed to validate, rotate, and revoke a
-// refresh-token chain.
 type SessionMetadata struct {
 	SessionID        string     `json:"session_id"`
 	FamilyID         string     `json:"family_id"`
@@ -28,12 +25,8 @@ type SessionMetadata struct {
 	UserAgent        string     `json:"user_agent"`
 }
 
-// RefreshRepository owns all session and refresh-token state. The actual
-// keys live in Redis (see comments above each method for the key layout).
 type RefreshRepository struct{}
 
-// NewRefreshRepository returns a new RefreshRepository. The repository
-// holds no state of its own; all data lives in Redis.
 func NewRefreshRepository() *RefreshRepository {
 	return &RefreshRepository{}
 }
@@ -58,8 +51,6 @@ func (r *RefreshRepository) CreateSession(ctx context.Context, meta SessionMetad
 	return err
 }
 
-// RotationResult is the parsed outcome of the AtomicRotationLuaScript.
-// Status is one of: "OK", "USED", "REVOKED", "EXPIRED", "NOT_FOUND".
 type RotationResult struct {
 	Status      string 
 	SessionData string
@@ -226,13 +217,68 @@ func (r *RefreshRepository) GetSession(ctx context.Context, sessionID string) (*
 	return &meta, nil
 }
 
-// RevokeAllByUserID revokes every active session for the given user.
-// Used after destructive operations (delete account, reset password) to
-// prevent session persistence on stolen devices.
-//
-// Implementation: SCAN auth:session:* keys, parse JSON, filter by user_id,
-// revoke the family of each match. SCAN is used instead of KEYS to avoid
-// blocking the Redis server on large keyspaces.
+func (r *RefreshRepository) ListSessionsByUserID(ctx context.Context, userID uint) ([]SessionMetadata, error) {
+	pattern := "auth:session:*"
+	var cursor uint64
+	var sessions []SessionMetadata
+
+	for {
+		keys, next, err := redisclient.Client.Scan(ctx, cursor, pattern, 100).Result()
+		if err != nil {
+			return nil, fmt.Errorf("scan sessions: %w", err)
+		}
+		for _, key := range keys {
+			data, err := redisclient.Client.Get(ctx, key).Result()
+			if err != nil {
+				continue
+			}
+			var meta SessionMetadata
+			if err := json.Unmarshal([]byte(data), &meta); err != nil {
+				continue
+			}
+			if meta.UserID != userID || meta.RevokedAt != nil {
+				continue
+			}
+			sessions = append(sessions, meta)
+		}
+		if next == 0 {
+			break
+		}
+		cursor = next
+	}
+
+	return sessions, nil
+}
+
+func (r *RefreshRepository) RevokeSessionByID(ctx context.Context, sessionID string, reason string) error {
+	sessionKey := fmt.Sprintf("auth:session:%s", sessionID)
+	data, err := redisclient.Client.Get(ctx, sessionKey).Result()
+	if err != nil {
+		return err
+	}
+
+	var meta SessionMetadata
+	if err := json.Unmarshal([]byte(data), &meta); err != nil {
+		return err
+	}
+
+	return r.RevokeFamily(ctx, meta.FamilyID, reason)
+}
+
+func (r *RefreshRepository) RevokeAllOtherSessions(ctx context.Context, userID uint, currentSessionID string, reason string) error {
+	sessions, err := r.ListSessionsByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	for _, s := range sessions {
+		if s.SessionID != currentSessionID {
+			_ = r.RevokeFamily(ctx, s.FamilyID, reason)
+		}
+	}
+	return nil
+}
+
 func (r *RefreshRepository) RevokeAllByUserID(ctx context.Context, userID uint, reason string) error {
 	pattern := "auth:session:*"
 	var cursor uint64
@@ -256,10 +302,9 @@ func (r *RefreshRepository) RevokeAllByUserID(ctx context.Context, userID uint, 
 				continue
 			}
 			if meta.RevokedAt != nil {
-				continue // already revoked
+				continue
 			}
 			if err := r.RevokeFamily(ctx, meta.FamilyID, reason); err != nil {
-				// Continue with other sessions even if one fails.
 				continue
 			}
 			revoked++

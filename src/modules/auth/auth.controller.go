@@ -116,7 +116,6 @@ func (c *AuthController) Logout(ctx fiber.Ctx) error {
 	refreshToken := ctx.Cookies(c.cfg.CookieName)
 
 	if refreshToken != "" {
-		// Logout is idempotent: ignore backend errors and clear cookie anyway.
 		_ = c.service.Logout(refreshToken)
 	}
 
@@ -258,8 +257,53 @@ func (c *AuthController) GoogleCallback(ctx fiber.Ctx) error {
 
 	c.setRefreshCookie(ctx, refreshToken, time.Now().Add(c.cfg.RefreshTokenTTL))
 
-	// Redirect back to the frontend; SessionProvider will bootstrap via /refresh.
 	return ctx.Redirect().To(c.cfg.FrontendOrigin)
+}
+
+func (c *AuthController) ListSessions(ctx fiber.Ctx) error {
+	userID, ok := ctx.Locals("user_id").(uint)
+	if !ok || userID == 0 {
+		return response.HandleError(ctx, exceptions.Unauthorized("ACCESS_TOKEN_INVALID", "Unauthorized"))
+	}
+	currentSessionID, _ := ctx.Locals("session_id").(string)
+
+	sessions, err := c.service.ListSessions(userID, currentSessionID)
+	if err != nil {
+		return response.HandleError(ctx, err)
+	}
+
+	return response.Success(ctx, fiber.StatusOK, "Sessions retrieved successfully", sessions)
+}
+
+func (c *AuthController) RevokeSession(ctx fiber.Ctx) error {
+	userID, ok := ctx.Locals("user_id").(uint)
+	if !ok || userID == 0 {
+		return response.HandleError(ctx, exceptions.Unauthorized("ACCESS_TOKEN_INVALID", "Unauthorized"))
+	}
+	sessionID := ctx.Params("id")
+	if sessionID == "" {
+		return response.HandleError(ctx, exceptions.BadRequest("Session ID required"))
+	}
+
+	if err := c.service.RevokeSession(userID, sessionID); err != nil {
+		return response.HandleError(ctx, err)
+	}
+
+	return response.Success(ctx, fiber.StatusOK, "Session revoked successfully", nil)
+}
+
+func (c *AuthController) RevokeAllOtherSessions(ctx fiber.Ctx) error {
+	userID, ok := ctx.Locals("user_id").(uint)
+	if !ok || userID == 0 {
+		return response.HandleError(ctx, exceptions.Unauthorized("ACCESS_TOKEN_INVALID", "Unauthorized"))
+	}
+	currentSessionID, _ := ctx.Locals("session_id").(string)
+
+	if err := c.service.RevokeAllOtherSessions(userID, currentSessionID); err != nil {
+		return response.HandleError(ctx, err)
+	}
+
+	return response.Success(ctx, fiber.StatusOK, "Other sessions revoked successfully", nil)
 }
 
 func RegisterRoutes(router fiber.Router, controller *AuthController, protected fiber.Handler, rateLimiter fiber.Handler, originValidator fiber.Handler) {
@@ -267,15 +311,18 @@ func RegisterRoutes(router fiber.Router, controller *AuthController, protected f
 	authGroup.Post("/login", originValidator, rateLimiter, controller.Login)
 	authGroup.Post("/register", originValidator, rateLimiter, controller.Register)
 	authGroup.Post("/refresh", originValidator, rateLimiter, controller.Refresh)
-	authGroup.Post("/logout", originValidator, rateLimiter, controller.Logout) // Idempotent, doesn't force protected access-token middleware
+	authGroup.Post("/logout", originValidator, rateLimiter, controller.Logout) 
 	authGroup.Post("/forgot-password", originValidator, rateLimiter, controller.ForgotPassword)
 	authGroup.Post("/reset-password", originValidator, rateLimiter, controller.ResetPassword)
 	authGroup.Post("/verify-email", originValidator, rateLimiter, controller.VerifyEmail)
 	authGroup.Post("/resend-verification", originValidator, rateLimiter, controller.ResendVerification)
 
-	// Google OAuth (browser redirect flow; no body, no Bearer).
 	authGroup.Get("/google", originValidator, controller.GoogleLogin)
 	authGroup.Get("/google/callback", originValidator, controller.GoogleCallback)
+
+	authGroup.Get("/sessions", protected, controller.ListSessions)
+	authGroup.Delete("/sessions", protected, controller.RevokeAllOtherSessions)
+	authGroup.Delete("/sessions/:id", protected, controller.RevokeSession)
 
 	authGroup.Delete("/account", protected, controller.DeleteAccount)
 	authGroup.Get("/me", protected, controller.Me)

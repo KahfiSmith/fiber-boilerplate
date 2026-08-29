@@ -35,9 +35,9 @@ func ParseAndValidate(c fiber.Ctx, payload any) error {
 
 	if err := validate.Struct(payload); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
-			return exceptions.BadRequest(msgForTag(validationErrors[0]))
+			return exceptions.New(fiber.StatusBadRequest, "VALIDATION_ERROR", msgForTag(validationErrors[0]))
 		}
-		return exceptions.BadRequest("Validation failed")
+		return exceptions.New(fiber.StatusBadRequest, "VALIDATION_ERROR", "Validation failed")
 	}
 
 	return nil

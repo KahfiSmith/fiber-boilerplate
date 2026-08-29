@@ -30,10 +30,20 @@ func (s *HealthService) Check() map[string]interface{} {
 		}
 	}
 
+	overall := "ok"
+	if dbStatus != "up" || redisStatus != "up" {
+		overall = "degraded"
+	}
+
 	return map[string]interface{}{
 		"app":      s.appName,
-		"status":   "ok",
+		"status":   overall,
 		"database": dbStatus,
 		"redis":    redisStatus,
 	}
+}
+
+func (s *HealthService) IsReady() bool {
+	res := s.Check()
+	return res["database"] == "up" && res["redis"] == "up"
 }

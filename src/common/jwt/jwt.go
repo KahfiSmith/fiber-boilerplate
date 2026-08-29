@@ -65,7 +65,6 @@ func (s *TokenService) GenerateAccessToken(userID uint, email string, role strin
 func (s *TokenService) ValidateAccessToken(tokenString string) (*AccessTokenClaims, error) {
 	claims := &AccessTokenClaims{}
 	token, err := golangjwt.ParseWithClaims(tokenString, claims, func(token *golangjwt.Token) (interface{}, error) {
-		// Strict HS256 validation
 		if token.Method == nil || token.Method.Alg() != golangjwt.SigningMethodHS256.Alg() {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}

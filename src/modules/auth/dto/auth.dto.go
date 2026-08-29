@@ -39,3 +39,13 @@ type AuthResponse struct {
 	ExpiresIn   int        `json:"expires_in"`
 	User        types.User `json:"user"`
 }
+
+type SessionResponse struct {
+	SessionID  string    `json:"session_id"`
+	IssuedAt   string    `json:"issued_at"`
+	LastUsedAt string    `json:"last_used_at"`
+	ExpiresAt  string    `json:"expires_at"`
+	IPAddress  string    `json:"ip_address"`
+	UserAgent  string    `json:"user_agent"`
+	Current    bool      `json:"current"`
+}

@@ -19,6 +19,12 @@ type Dependencies struct {
 }
 
 func RegisterRoutes(app *fiber.App, deps Dependencies) {
+	if deps.Config.App.Env != "production" {
+		app.Get("/openapi.yaml", func(c fiber.Ctx) error {
+			return c.SendFile("./docs/openapi/openapi.yaml")
+		})
+	}
+
 	api := app.Group("/api")
 	v1 := api.Group("/v1")
 

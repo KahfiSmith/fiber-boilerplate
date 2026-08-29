@@ -81,7 +81,7 @@ func setupTestApp(t *testing.T) (*fiber.App, config.AuthConfig) {
 	tokenService := jwt.NewTokenService(cfg)
 	authRepo := auth.NewAuthRepository()
 	refreshRepo := auth.NewRefreshRepository()
-	authService := auth.NewAuthService(authRepo, refreshRepo, tokenService, cfg)
+	authService := auth.NewAuthService(authRepo, refreshRepo, tokenService, nil, cfg)
 	oauthService := auth.NewOAuthService(config.OAuthConfig{}, cfg, authRepo, refreshRepo, tokenService)
 	authController := auth.NewAuthController(authService, oauthService, cfg)
 
