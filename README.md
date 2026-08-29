@@ -39,6 +39,9 @@ Backend starter built with Go, Fiber v3, PostgreSQL, and Redis. Serves the
 - `POST /api/v1/auth/reset-password`
 - `POST /api/v1/auth/verify-email`
 - `POST /api/v1/auth/resend-verification`
+- `GET /api/v1/auth/sessions` (Protected)
+- `DELETE /api/v1/auth/sessions` (Protected)
+- `DELETE /api/v1/auth/sessions/:id` (Protected)
 - `DELETE /api/v1/auth/account` (Protected)
 - `GET /api/v1/auth/me` (Protected)
 

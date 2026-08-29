@@ -9,6 +9,7 @@ import (
 
 	"fiber-boilerplate/src/common/jwt"
 	"fiber-boilerplate/src/common/logger"
+	"fiber-boilerplate/src/common/mail"
 	"fiber-boilerplate/src/common/middleware"
 	"fiber-boilerplate/src/common/redis"
 	"fiber-boilerplate/src/common/response"
@@ -24,6 +25,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/helmet"
 	"github.com/gofiber/fiber/v3/middleware/recover"
+	"github.com/gofiber/fiber/v3/middleware/requestid"
 )
 
 func main() {
@@ -44,13 +46,15 @@ func main() {
 		ErrorHandler: response.GlobalErrorHandler,
 	})
 
+	app.Use(requestid.New())
 	app.Use(recover.New())
 	app.Use(helmet.New())
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.Auth.FrontendOrigin},
 		AllowCredentials: true,
-		AllowHeaders:     []string{"Authorization", "Content-Type"},
+		AllowHeaders:     []string{"Authorization", "Content-Type", "X-Request-ID"},
+		ExposeHeaders:    []string{"X-Request-ID"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 	}))
 
@@ -62,7 +66,8 @@ func main() {
 	tokenService := jwt.NewTokenService(cfg.Auth)
 	authRepo := auth.NewAuthRepository()
 	refreshRepo := auth.NewRefreshRepository()
-	authService := auth.NewAuthService(authRepo, refreshRepo, tokenService, cfg.Auth)
+	logMailer := mail.NewLogMailer(cfg.App.Name)
+	authService := auth.NewAuthService(authRepo, refreshRepo, tokenService, logMailer, cfg.Auth)
 	oauthService := auth.NewOAuthService(cfg.OAuth, cfg.Auth, authRepo, refreshRepo, tokenService)
 	authController := auth.NewAuthController(authService, oauthService, cfg.Auth)
 
